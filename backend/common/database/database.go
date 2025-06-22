@@ -5,11 +5,13 @@ import (
 	"backend/generate/psql"
 	"backend/type/common"
 	"database/sql"
+	"embed"
 	"github.com/bsthun/gut"
 	_ "github.com/lib/pq"
+	"github.com/pressly/goose/v3"
 )
 
-func Init(config *config.Config) common.Database {
+func Init(config *config.Config, migration embed.FS) common.Database {
 	// * initialize postgres database
 	postgres, err := sql.Open("postgres", *config.PostgresDsn)
 	if err != nil {
@@ -30,6 +32,9 @@ func Init(config *config.Config) common.Database {
 		PQuerier: postgresQuerier,
 		PConn:    postgres,
 	}
+
+	// * run migrations
+	goose.SetBaseFS(migration)
 
 	return database
 }

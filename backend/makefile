@@ -1,3 +1,5 @@
+include .env
+
 .PHONY: generate
 generate: sqlc swagger mock
 
@@ -22,6 +24,8 @@ sqlc:
 		-e 's/sql\.NullBool/\*bool/g' \
 		{} +
 	find ./generate/psql -type f -exec sed -i '' -e 's/DBTX/PDBTX/g' -e 's/Querier/PQuerier/g' {} +
+	pg_dump --schema-only --no-owner --no-privileges --no-tablespaces --no-security-labels --exclude-table=_gooses ${GOOSE_DBSTRING} > generate/raw.sql
+	awk '/^CREATE TABLE/,/^\);$$/' generate/raw.sql > generate/schema.sql
 
 .PHONY: swagger
 swagger:

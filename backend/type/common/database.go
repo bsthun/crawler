@@ -8,10 +8,10 @@ import (
 
 type Database interface {
 	P() psql.PQuerier
-	Ptx(context context.Context, opts *sql.TxOptions) (Tx, psql.PQuerier)
+	Ptx(context context.Context, opts *sql.TxOptions) (DatabaseTx, psql.PQuerier)
 }
 
-type Tx interface {
+type DatabaseTx interface {
 	Commit() error
 	Rollback() error
 }

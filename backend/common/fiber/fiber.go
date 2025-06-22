@@ -13,7 +13,7 @@ func Init(lc fx.Lifecycle, config *config.Config) *fiber.App {
 		ErrorHandler:  HandleError,
 		Prefork:       false,
 		StrictRouting: true,
-		AppName:       "Cafe Model Backend",
+		BodyLimit:     1024 * 1024 * 1024,
 		Network:       "tcp",
 	})
 
@@ -22,7 +22,7 @@ func Init(lc fx.Lifecycle, config *config.Config) *fiber.App {
 			go func() {
 				err := app.Listen(*config.WebListen[1])
 				if err != nil {
-					gut.Fatal("Unable to listen", err)
+					gut.Fatal("unable to listen", err)
 				}
 			}()
 			return nil
