@@ -1,0 +1,14 @@
+# log
+*.log
+
+# dependency
+node_modules/
+dist/
+*.local
+
+# editor
+.vscode/
+.idea/
+
+# os
+.DS_Store
