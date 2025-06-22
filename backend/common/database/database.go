@@ -35,6 +35,10 @@ func Init(config *config.Config, migration embed.FS) common.Database {
 
 	// * run migrations
 	goose.SetBaseFS(migration)
+	goose.SetTableName("_gooses")
+	if err := goose.Up(postgres, "database/postgres/migration"); err != nil {
+		gut.Fatal("failed to run migrations", err)
+	}
 
 	return database
 }
