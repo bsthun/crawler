@@ -6,7 +6,7 @@ import (
 	"github.com/bsthun/gut"
 )
 
-func (r *Service) TaskCreate(ctx context.Context, userId *uint64, categoryName *string, taskType *string, url *string) (*psql.Task, *gut.ErrorInstance) {
+func (r *Service) TaskCreate(ctx context.Context, userId *uint64, categoryName *string, taskType *string, source *string) (*psql.Task, *gut.ErrorInstance) {
 	// * get category by name
 	category, err := r.database.P().CategoryGetByName(ctx, categoryName)
 	if err != nil {
@@ -18,8 +18,10 @@ func (r *Service) TaskCreate(ctx context.Context, userId *uint64, categoryName *
 		UserId:     userId,
 		CategoryId: category.Id,
 		Type:       taskType,
-		Url:        url,
+		Source:     source,
 		IsRaw:      gut.Ptr(false),
+		Title:      nil,
+		Content:    nil,
 	})
 	if err != nil {
 		return nil, gut.Err(false, "failed to create task", err)

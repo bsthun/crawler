@@ -11,7 +11,7 @@ import (
 	publicEndpoint "backend/endpoint/public"
 	stateEndpoint "backend/endpoint/state"
 	taskEndpoint "backend/endpoint/task"
-	taskProcedure "backend/service/task"
+	taskProcedure "backend/procedure/task"
 	"embed"
 	"go.uber.org/fx"
 )

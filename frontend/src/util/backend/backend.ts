@@ -47,17 +47,49 @@ export interface PayloadStateResponse {
   userId: number;
 }
 
+export interface PayloadTaskCategoryItem {
+  createdAt: string;
+  id: number;
+  name: string;
+  updatedAt: string;
+}
+
+export interface PayloadTaskCategoryListResponse {
+  categories: PayloadTaskCategoryItem[];
+}
+
+export interface PayloadTaskDetailRequest {
+  taskId: number;
+}
+
+export interface PayloadTaskDetailResponse {
+  categoryId: number;
+  content: string;
+  createdAt: string;
+  failedReason: string;
+  id: number;
+  isRaw: boolean;
+  source: string;
+  status: string;
+  title: string;
+  tokenCount: number;
+  type: string;
+  updatedAt: string;
+  uploadId: number;
+  userId: number;
+}
+
 export interface PayloadTaskListItem {
   categoryId: number;
   createdAt: string;
   failedReason: string;
   id: number;
+  source: string;
   status: string;
   tokenCount: number;
   type: string;
   updatedAt: string;
   uploadId: number;
-  url: string;
   userId: number;
 }
 
@@ -79,8 +111,8 @@ export interface PayloadTaskListResponse {
 
 export interface PayloadTaskSubmitRequest {
   category: string;
+  source: string;
   type: PayloadTaskSubmitRequestTypeEnum;
-  url: string;
 }
 
 export enum PayloadTaskSubmitRequestTypeEnum {
@@ -91,6 +123,17 @@ export enum PayloadTaskSubmitRequestTypeEnum {
 
 export interface PayloadTaskSubmitResponse {
   taskId: number;
+}
+
+export interface PayloadTaskUploadItem {
+  createdAt: string;
+  id: number;
+  updatedAt: string;
+  userId: number;
+}
+
+export interface PayloadTaskUploadListResponse {
+  uploads: PayloadTaskUploadItem[];
 }
 
 export interface ResOauthRedirect {
@@ -114,6 +157,20 @@ export interface ResStateResponse {
   success: boolean;
 }
 
+export interface ResTaskCategoryListResponse {
+  code: string;
+  data: PayloadTaskCategoryListResponse;
+  message: string;
+  success: boolean;
+}
+
+export interface ResTaskDetailResponse {
+  code: string;
+  data: PayloadTaskDetailResponse;
+  message: string;
+  success: boolean;
+}
+
 export interface ResTaskListResponse {
   code: string;
   data: PayloadTaskListResponse;
@@ -124,6 +181,13 @@ export interface ResTaskListResponse {
 export interface ResTaskSubmitResponse {
   code: string;
   data: PayloadTaskSubmitResponse;
+  message: string;
+  success: boolean;
+}
+
+export interface ResTaskUploadListResponse {
+  code: string;
+  data: PayloadTaskUploadListResponse;
   message: string;
   success: boolean;
 }
@@ -150,6 +214,14 @@ export type StateOverviewData = ResOverview;
 
 export type StateOverviewError = ResponseErrorResponse;
 
+export type TaskCategoryListData = ResTaskCategoryListResponse;
+
+export type TaskCategoryListError = ResponseErrorResponse;
+
+export type TaskDetailData = ResTaskDetailResponse;
+
+export type TaskDetailError = ResponseErrorResponse;
+
 export type TaskListData = ResTaskListResponse;
 
 export type TaskListError = ResponseErrorResponse;
@@ -157,6 +229,10 @@ export type TaskListError = ResponseErrorResponse;
 export type TaskSubmitData = ResTaskSubmitResponse;
 
 export type TaskSubmitError = ResponseErrorResponse;
+
+export type TaskUploadListData = ResTaskUploadListResponse;
+
+export type TaskUploadListError = ResponseErrorResponse;
 
 export namespace Public {
   /**
@@ -230,6 +306,38 @@ export namespace Task {
   /**
    * No description
    * @tags task
+   * @name TaskCategoryList
+   * @request POST:/task/category/list
+   * @response `200` `TaskCategoryListData` OK
+   * @response `400` `ResponseErrorResponse` Bad Request
+   */
+  export namespace TaskCategoryList {
+    export type RequestParams = {};
+    export type RequestQuery = {};
+    export type RequestBody = never;
+    export type RequestHeaders = {};
+    export type ResponseBody = TaskCategoryListData;
+  }
+
+  /**
+   * No description
+   * @tags task
+   * @name TaskDetail
+   * @request POST:/task/detail
+   * @response `200` `TaskDetailData` OK
+   * @response `400` `ResponseErrorResponse` Bad Request
+   */
+  export namespace TaskDetail {
+    export type RequestParams = {};
+    export type RequestQuery = {};
+    export type RequestBody = PayloadTaskDetailRequest;
+    export type RequestHeaders = {};
+    export type ResponseBody = TaskDetailData;
+  }
+
+  /**
+   * No description
+   * @tags task
    * @name TaskList
    * @request POST:/task/list
    * @response `200` `TaskListData` OK
@@ -257,6 +365,22 @@ export namespace Task {
     export type RequestBody = PayloadTaskSubmitRequest;
     export type RequestHeaders = {};
     export type ResponseBody = TaskSubmitData;
+  }
+
+  /**
+   * No description
+   * @tags task
+   * @name TaskUploadList
+   * @request POST:/task/upload/list
+   * @response `200` `TaskUploadListData` OK
+   * @response `400` `ResponseErrorResponse` Bad Request
+   */
+  export namespace TaskUploadList {
+    export type RequestParams = {};
+    export type RequestQuery = {};
+    export type RequestBody = never;
+    export type RequestHeaders = {};
+    export type ResponseBody = TaskUploadListData;
   }
 }
 
@@ -521,6 +645,40 @@ export class Backend<
      * No description
      *
      * @tags task
+     * @name TaskCategoryList
+     * @request POST:/task/category/list
+     * @response `200` `TaskCategoryListData` OK
+     * @response `400` `ResponseErrorResponse` Bad Request
+     */
+    taskCategoryList: (params: RequestParams = {}) =>
+      this.request<TaskCategoryListData, TaskCategoryListError>({
+        path: `/task/category/list`,
+        method: "POST",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags task
+     * @name TaskDetail
+     * @request POST:/task/detail
+     * @response `200` `TaskDetailData` OK
+     * @response `400` `ResponseErrorResponse` Bad Request
+     */
+    taskDetail: (body: PayloadTaskDetailRequest, params: RequestParams = {}) =>
+      this.request<TaskDetailData, TaskDetailError>({
+        path: `/task/detail`,
+        method: "POST",
+        body: body,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags task
      * @name TaskList
      * @request POST:/task/list
      * @response `200` `TaskListData` OK
@@ -550,6 +708,22 @@ export class Backend<
         method: "POST",
         body: body,
         type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags task
+     * @name TaskUploadList
+     * @request POST:/task/upload/list
+     * @response `200` `TaskUploadListData` OK
+     * @response `400` `ResponseErrorResponse` Bad Request
+     */
+    taskUploadList: (params: RequestParams = {}) =>
+      this.request<TaskUploadListData, TaskUploadListError>({
+        path: `/task/upload/list`,
+        method: "POST",
         ...params,
       }),
   };

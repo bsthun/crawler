@@ -1,7 +1,7 @@
 package taskEndpoint
 
 import (
-	"backend/service/task"
+	"backend/procedure/task"
 	"backend/type/common"
 )
 

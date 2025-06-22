@@ -59,7 +59,7 @@ func (r *Handler) HandleTaskList(c *fiber.Ctx) error {
 			UploadId:     task.UploadId,
 			CategoryId:   task.CategoryId,
 			Type:         task.Type,
-			Url:          task.Url,
+			Source:       task.Source,
 			Status:       task.Status,
 			FailedReason: task.FailedReason,
 			TokenCount:   task.TokenCount,

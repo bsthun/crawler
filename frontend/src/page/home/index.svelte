@@ -11,14 +11,15 @@
     import {cubicInOut} from "svelte/easing"
     import {BarChart3, Wallet, Clock} from "lucide-svelte"
     import {catcher} from "$/util/backend.js";
+    import {Link} from "svelte-navigator";
+    import Container from "$/component/layout/Container.svelte";
 
     const setup = getContext<Writable<Setup>>('setup')
     let overviewData = $state<PayloadOverview | null>(null)
     let context = $state<ChartContextValue>()
 
     const mount = () => {
-        backend.state
-            .stateOverview()
+        backend.state.stateOverview()
             .then((res) => {
                 overviewData = res.data
             })
@@ -36,8 +37,7 @@
     } satisfies Chart.ChartConfig
 </script>
 
-<div class="p-6 space-y-6">
-    <!-- Profile Card -->
+<Container class="flex flex-col gap-6">
     {#if $setup?.profile?.id}
         <Card.Root>
             <Card.Content>
@@ -62,7 +62,7 @@
         <Card.Content>
             <div class="flex items-center gap-6">
                 <div class="flex-[1]">
-                    <Chart.Container config={chartConfig} class="h-96 py-12 chart">
+                    <Chart.Container class="h-96 py-12 chart" config={chartConfig}>
                         <BarChart
                                 axis="x"
                                 bind:context
@@ -116,17 +116,6 @@
                 </div>
 
                 <div class="flex-[2] space-y-4">
-                    <!-- Total Tasks Row -->
-                    <div class="text-center p-4 bg-purple-50 rounded-lg">
-                        <div class="text-3xl font-bold text-purple-600">
-                            {overviewData?.histories?.reduce((sum, history) =>
-                                sum + history.completed + history.failed + history.pending, 0
-                            ) || 0}
-                        </div>
-                        <div class="text-lg text-gray-600 font-medium">Total Tasks</div>
-                    </div>
-
-                    <!-- Subcategories in 3 columns -->
                     <div class="grid grid-cols-3 gap-4">
                         <div class="text-center">
                             <div class="text-2xl font-bold text-purple-500">
@@ -147,6 +136,23 @@
                             <div class="text-sm text-gray-500">Pending</div>
                         </div>
                     </div>
+
+                    <div class="text-center p-4 bg-purple-50 rounded-lg">
+                        <div class="text-3xl font-bold text-purple-600">
+                            {overviewData?.histories?.reduce((sum, history) =>
+                                sum + history.completed + history.failed + history.pending, 0
+                            ) || 0}
+                        </div>
+                        <div class="text-lg text-gray-600 font-medium">Total Tasks</div>
+                    </div>
+
+                    <Link to="/home/task">
+                        <Card.Root class="hover:bg-muted/50 transition-colors cursor-pointer">
+                            <Card.Content class="flex items-center justify-center">
+                                <span class="text-lg font-medium">View All Tasks</span>
+                            </Card.Content>
+                        </Card.Root>
+                    </Link>
                 </div>
             </div>
         </Card.Content>
@@ -175,7 +181,7 @@
             </Card.Root>
         </div>
     {/if}
-</div>
+</Container>
 
 <style lang="postcss">
     :global(.lc-tooltip-rect) {

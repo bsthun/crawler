@@ -30,7 +30,11 @@ func Bind(
 	// * task endpoints
 	task := api.Group("/task", middleware.Jwt(true))
 	task.Post("/submit", taskEndpoint.HandleTaskSubmit)
+	task.Post("/submit/batch", taskEndpoint.HandleTaskSubmitBatch)
 	task.Post("/list", taskEndpoint.HandleTaskList)
+	task.Post("/detail", taskEndpoint.HandleTaskDetail)
+	task.Post("/category/list", taskEndpoint.HandleTaskCategoryList)
+	task.Post("/upload/list", taskEndpoint.HandleTaskUploadList)
 
 	// * static files
 	app.Static("/file", ".local/file")

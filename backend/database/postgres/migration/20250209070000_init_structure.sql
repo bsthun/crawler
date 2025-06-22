@@ -35,7 +35,7 @@ CREATE TABLE tasks
     upload_id     BIGINT                                                                           REFERENCES uploads (id) ON DELETE SET NULL NULL,
     category_id   BIGINT                                                                           REFERENCES categories (id) ON DELETE SET NULL NULL,
     type          VARCHAR(64) CHECK ( type IN ('web', 'doc', 'youtube') )                          NOT NULL,
-    url           TEXT                                                                             NOT NULL,
+    source        TEXT                                                                             NOT NULL,
     is_raw        BOOLEAN                                                                          NOT NULL,
     status        VARCHAR(64) CHECK ( status IN ('queuing', 'processing', 'completed', 'failed') ) NOT NULL DEFAULT 'queuing',
     failed_reason TEXT                                                                             NULL,

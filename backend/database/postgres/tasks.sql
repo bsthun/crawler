@@ -1,10 +1,10 @@
 -- name: TaskCreateForUserId :one
-INSERT INTO tasks (user_id, category_id, type, url, is_raw)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO tasks (user_id, category_id, type, source, is_raw, title, content)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: TaskListByUserId :many
-SELECT id, user_id, upload_id, category_id, type, url, status, failed_reason, token_count, created_at, updated_at
+SELECT id, user_id, upload_id, category_id, type, source, status, failed_reason, token_count, created_at, updated_at
 FROM tasks
 WHERE user_id = $1
   AND (sqlc.narg('upload_id')::BIGINT IS NULL OR upload_id = sqlc.narg('upload_id')::BIGINT)
@@ -16,6 +16,11 @@ SELECT COUNT(*)
 FROM tasks
 WHERE user_id = $1
   AND (sqlc.narg('upload_id')::BIGINT IS NULL OR upload_id = sqlc.narg('upload_id')::BIGINT);
+
+-- name: TaskGetByIdAndUserId :one
+SELECT *
+FROM tasks
+WHERE id = $1 AND user_id = $2;
 
 -- name: TaskOverviewByUserId :many
 WITH daily_stats AS (
