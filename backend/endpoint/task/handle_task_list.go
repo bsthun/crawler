@@ -20,14 +20,6 @@ func (r *Handler) HandleTaskList(c *fiber.Ctx) error {
 		return gut.Err(false, "invalid body", err)
 	}
 
-	// * set default values
-	if body.Limit == nil {
-		body.Limit = gut.Ptr(int32(10))
-	}
-	if body.Offset == nil {
-		body.Offset = gut.Ptr(int32(0))
-	}
-
 	// * validate uploadId ownership if provided
 	if body.UploadId != nil {
 		_, err := r.database.P().UploadGetByIdAndUserId(c.Context(), &psql.UploadGetByIdAndUserIdParams{
@@ -51,8 +43,8 @@ func (r *Handler) HandleTaskList(c *fiber.Ctx) error {
 	// * list tasks
 	tasks, err := r.database.P().TaskListByUserId(c.Context(), &psql.TaskListByUserIdParams{
 		UserId:   l.UserId,
-		Limit:    body.Limit,
-		Offset:   body.Offset,
+		Limit:    body.Paginate.Limit,
+		Offset:   body.Paginate.Offset,
 		UploadId: body.UploadId,
 	})
 	if err != nil {

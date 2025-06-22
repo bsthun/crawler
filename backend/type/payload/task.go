@@ -1,6 +1,9 @@
 package payload
 
-import "time"
+import (
+	"backend/type/common"
+	"time"
+)
 
 type TaskSubmitRequest struct {
 	Category *string `json:"category" validate:"required"`
@@ -14,8 +17,7 @@ type TaskSubmitResponse struct {
 
 type TaskListRequest struct {
 	UploadId *uint64 `json:"uploadId"`
-	Limit    *int32  `json:"limit"`
-	Offset   *int32  `json:"offset"`
+	common.Paginate
 }
 
 type TaskListItem struct {
@@ -35,4 +37,18 @@ type TaskListItem struct {
 type TaskListResponse struct {
 	Count *uint64         `json:"count"`
 	Tasks []*TaskListItem `json:"tasks"`
+}
+
+type OverviewHistoryItem struct {
+	Submitted *uint64 `json:"submitted"`
+	Pending   *uint64 `json:"pending"`
+	Completed *uint64 `json:"completed"`
+	Failed    *uint64 `json:"failed"`
+}
+
+type Overview struct {
+	Histories      []*OverviewHistoryItem `json:"histories"`
+	TokenHistories *int32                 `json:"token_histories"`
+	TokenCount     *int32                 `json:"token_count"`
+	PoolTokenCount *int32                 `json:"pool_token_count"`
 }

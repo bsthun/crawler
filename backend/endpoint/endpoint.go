@@ -25,6 +25,7 @@ func Bind(
 	// * state endpoints
 	state := api.Group("/state", middleware.Jwt(true))
 	state.Post("/state", stateEndpoint.HandleState)
+	state.Post("/overview", stateEndpoint.HandleStateOverview)
 
 	// * task endpoints
 	task := api.Group("/task", middleware.Jwt(true))
