@@ -10,22 +10,22 @@ import (
 )
 
 func (r *Handler) HandleTaskSubmit(c *fiber.Ctx) error {
-	// * parse request
-	var req payload.TaskSubmitRequest
-	if err := c.BodyParser(&req); err != nil {
-		return gut.Err(false, "invalid request body", err)
-	}
-
-	// * validate request
-	if err := gut.Validate(&req); err != nil {
-		return gut.Err(false, "validation failed", err)
-	}
-
-	// * get user claims
+	// * login claims
 	l := c.Locals("l").(*jwt.Token).Claims.(*common.LoginClaims)
 
+	// * parse body
+	body := new(payload.TaskSubmitRequest)
+	if err := c.BodyParser(body); err != nil {
+		return gut.Err(false, "invalid body", err)
+	}
+
+	// * validate body
+	if err := gut.Validate(body); err != nil {
+		return err
+	}
+
 	// * create task
-	task, er := r.taskService.TaskCreate(c.Context(), l.UserId, req.Category, req.Type, req.Url)
+	task, er := r.taskProcedure.TaskCreate(c.Context(), l.UserId, body.Category, body.Type, body.Url)
 	if er != nil {
 		return er
 	}

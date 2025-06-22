@@ -1,4 +1,4 @@
-package task
+package taskProcedure
 
 import (
 	"backend/generate/psql"

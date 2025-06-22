@@ -6,13 +6,13 @@ import (
 )
 
 type Handler struct {
-	database    common.Database
-	taskService task.Server
+	database      common.Database
+	taskProcedure taskProcedure.Server
 }
 
-func Handle(database common.Database, taskService task.Server) *Handler {
+func Handle(database common.Database, taskService taskProcedure.Server) *Handler {
 	return &Handler{
-		database:    database,
-		taskService: taskService,
+		database:      database,
+		taskProcedure: taskService,
 	}
 }

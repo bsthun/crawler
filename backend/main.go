@@ -11,7 +11,7 @@ import (
 	publicEndpoint "backend/endpoint/public"
 	stateEndpoint "backend/endpoint/state"
 	taskEndpoint "backend/endpoint/task"
-	"backend/service/task"
+	taskProcedure "backend/service/task"
 	"embed"
 	"go.uber.org/fx"
 )
@@ -31,7 +31,7 @@ func main() {
 			ollama.Init,
 			fiber.Init,
 			middleware.Init,
-			task.Serve,
+			taskProcedure.Serve,
 			publicEndpoint.Handle,
 			stateEndpoint.Handle,
 			taskEndpoint.Handle,
