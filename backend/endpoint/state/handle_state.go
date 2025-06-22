@@ -10,11 +10,11 @@ import (
 )
 
 func (r *Handler) HandleState(c *fiber.Ctx) error {
-	// * get user claims from jwt token
-	u := c.Locals("l").(*jwt.Token).Claims.(*common.UserClaims)
+	// * login claims
+	l := c.Locals("l").(*jwt.Token).Claims.(*common.LoginClaims)
 
 	// * get user from database
-	user, err := r.database.P().UserGetById(c.Context(), u.UserId)
+	user, err := r.database.P().UserGetById(c.Context(), l.UserId)
 	if err != nil {
 		return gut.Err(false, "failed to get user", err)
 	}

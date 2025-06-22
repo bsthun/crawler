@@ -12,6 +12,7 @@ Endpoint implementation guideline:
 - Use gut.Iterate to iterate over array and map to another array. Example: `organizationItems, _ := gut.Iterate(organizations, func(organization sqlcpg.GetUserOrganizationsRow) (*payload.OrganizationItem, *gut.ErrorInstance)`.
 - Use `response.Success(payload)` to return success response. For inline struct, always use `response.Success(&payload.Type{})` to avoid copy.
 - Sqlc output is pointer by default, as well as payload. Use pointer as basis
+- Any function that return *gut.ErrorInstance should be named `er` amd handled with `if er != nil { return er }` without new gut.Err function.
 
 Query guideline:
 

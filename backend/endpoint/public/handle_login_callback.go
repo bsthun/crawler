@@ -18,12 +18,12 @@ func (r *Handler) HandleLoginCallback(c *fiber.Ctx) error {
 	// * parse body
 	body := new(payload.OauthCallback)
 	if err := c.BodyParser(body); err != nil {
-		return gut.Err(false, "unable to parse body", err)
+		return gut.Err(false, "invalid body", err)
 	}
 
 	// * validate body
 	if err := gut.Validate(body); err != nil {
-		return gut.Err(false, "invalid body", err)
+		return err
 	}
 
 	// * exchange code for token
@@ -32,7 +32,7 @@ func (r *Handler) HandleLoginCallback(c *fiber.Ctx) error {
 		return gut.Err(false, "failed to exchange code for token", err)
 	}
 
-	// * parse ID token from OAuth2 token
+	// * parse id token from oauth2 token
 	userInfo, err := r.OidcProvider.UserInfo(context.TODO(), oauth2.StaticTokenSource(token))
 	if err != nil {
 		return gut.Err(false, "failed to get user info", err)
@@ -65,11 +65,11 @@ func (r *Handler) HandleLoginCallback(c *fiber.Ctx) error {
 	}
 
 	// * generate jwt token
-	claims := &common.UserClaims{
+	claims := &common.LoginClaims{
 		UserId: user.Id,
 	}
 
-	// * sign JWT token
+	// * sign jwt token
 	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signedJwtToken, err := jwtToken.SignedString([]byte(*r.config.Secret))
 	if err != nil {

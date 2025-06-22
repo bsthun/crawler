@@ -14,22 +14,22 @@ type OidcClaims struct {
 	Email     *string `json:"email"`
 }
 
-type UserClaims struct {
+type LoginClaims struct {
 	UserId    *uint64    `json:"userId"`
 	ExpiredAt *time.Time `json:"exp"`
 }
 
-func (r *UserClaims) Valid() error {
+func (r *LoginClaims) Valid() error {
 	return nil
 }
 
-func (r *UserClaims) MarshalJSON() ([]byte, error) {
+func (r *LoginClaims) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]any{
 		"userId": gut.EncodeId(*r.UserId),
 	})
 }
 
-func (r *UserClaims) UnmarshalJSON(data []byte) error {
+func (r *LoginClaims) UnmarshalJSON(data []byte) error {
 	var raw map[string]any
 	err := json.Unmarshal(data, &raw)
 	if err != nil {

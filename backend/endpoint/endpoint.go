@@ -4,6 +4,7 @@ import (
 	"backend/common/fiber/middleware"
 	"backend/endpoint/public"
 	"backend/endpoint/state"
+	"backend/endpoint/task"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -11,6 +12,7 @@ func Bind(
 	app *fiber.App,
 	publicEndpoint *publicEndpoint.Handler,
 	stateEndpoint *stateEndpoint.Handler,
+	taskEndpoint *taskEndpoint.Handler,
 	middleware *middleware.Middleware,
 ) {
 	api := app.Group("/api")

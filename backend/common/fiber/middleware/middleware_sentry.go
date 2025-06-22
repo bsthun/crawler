@@ -32,7 +32,7 @@ func (r *Middleware) Sentry() fiber.Handler {
 		// * configure scope
 		hub.ConfigureScope(func(scope *sentry.Scope) {
 			if c.Locals("l") != nil {
-				claims := c.Locals("l").(*jwt.Token).Claims.(*common.UserClaims)
+				claims := c.Locals("l").(*jwt.Token).Claims.(*common.LoginClaims)
 				scope.SetUser(sentry.User{
 					ID:        strconv.FormatUint(*claims.UserId, 10),
 					Email:     "",

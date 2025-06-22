@@ -12,7 +12,7 @@ func (r *Middleware) Jwt(require bool) fiber.Handler {
 		SigningKey:  []byte(*r.config.Secret),
 		TokenLookup: "cookie:login",
 		ContextKey:  "l",
-		Claims:      new(common.UserClaims),
+		Claims:      new(common.LoginClaims),
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			if !require {
 				return c.Next()
