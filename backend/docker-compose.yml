@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: crawler-postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - crawler-postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: crawler1
+      POSTGRES_DB: crawler1
+    cpus: 2.0
+    mem_limit: 2G
+    memswap_limit: 2G
+    restart: no
+    logging:
+      driver: none
+
+volumes:
+  crawler-postgres-data:
