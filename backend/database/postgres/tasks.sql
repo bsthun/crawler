@@ -23,8 +23,14 @@ FROM tasks
 WHERE id = $1 AND user_id = $2;
 
 -- name: TaskOverviewByUserId :many
-WITH daily_stats AS (
-    SELECT 
+WITH token_stats AS (
+    SELECT
+        COALESCE(SUM(token_count) FILTER (WHERE status = 'completed'), 0) as token_count
+    FROM tasks
+    WHERE tasks.user_id = $1
+),
+daily_stats AS (
+    SELECT
         d.day_date,
         COUNT(tasks.id) FILTER (WHERE DATE(tasks.created_at) = d.day_date) as submitted,
         COUNT(tasks.id) FILTER (WHERE tasks.status IN ('queuing', 'processing') AND DATE(tasks.created_at) = d.day_date) as pending,
@@ -36,24 +42,21 @@ WITH daily_stats AS (
     LEFT JOIN tasks ON DATE(tasks.created_at) = d.day_date AND tasks.user_id = $1
     GROUP BY d.day_date
     ORDER BY d.day_date
-),
-token_stats AS (
-    SELECT 
-        COALESCE(SUM(token_count) FILTER (WHERE status = 'completed' AND updated_at >= NOW() - INTERVAL '7 days'), 0) as token_histories,
-        COALESCE(SUM(token_count) FILTER (WHERE status = 'completed'), 0) as token_count
-    FROM tasks 
-    WHERE user_id = $1
-),
-pool_stats AS (
-    SELECT COALESCE(SUM(token_count) FILTER (WHERE status = 'completed'), 0) as pool_token_count
-    FROM tasks
 )
 SELECT
+    token_stats.token_count::INTEGER as token_count,
     daily_stats.submitted,
     daily_stats.pending,
     daily_stats.completed,
-    daily_stats.failed,
-    token_stats.token_histories::INTEGER as token_histories,
-    token_stats.token_count::INTEGER as token_count,
-    pool_stats.pool_token_count::INTEGER as pool_token_count
-FROM daily_stats, token_stats, pool_stats;
+    daily_stats.failed
+FROM daily_stats, token_stats;
+
+-- name: PoolTokenOverviewByCategory :many
+SELECT
+    categories.id as category_id,
+    categories.name as category_name,
+    COALESCE(SUM(tasks.token_count) FILTER (WHERE tasks.status = 'completed'), 0)::INTEGER as token_count
+FROM categories
+LEFT JOIN tasks ON categories.id = tasks.category_id
+GROUP BY categories.id, categories.name
+ORDER BY categories.name;

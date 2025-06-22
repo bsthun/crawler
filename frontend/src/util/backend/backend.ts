@@ -28,9 +28,8 @@ export interface PayloadOauthRedirect {
 
 export interface PayloadOverview {
   histories: PayloadOverviewHistoryItem[];
-  poolTokenCount: number;
+  poolTokens: PayloadPoolTokenCategoryItem[];
   tokenCount: number;
-  tokenHistories: number;
 }
 
 export interface PayloadOverviewHistoryItem {
@@ -38,6 +37,12 @@ export interface PayloadOverviewHistoryItem {
   failed: number;
   pending: number;
   submitted: number;
+}
+
+export interface PayloadPoolTokenCategoryItem {
+  categoryId: number;
+  categoryName: string;
+  tokenCount: number;
 }
 
 export interface PayloadStateResponse {
@@ -109,6 +114,11 @@ export interface PayloadTaskListResponse {
   tasks: PayloadTaskListItem[];
 }
 
+export interface PayloadTaskSubmitBatchResponse {
+  tasks: PsqlTask[];
+  tasksCreated: number;
+}
+
 export interface PayloadTaskSubmitRequest {
   category: string;
   source: string;
@@ -134,6 +144,23 @@ export interface PayloadTaskUploadItem {
 
 export interface PayloadTaskUploadListResponse {
   uploads: PayloadTaskUploadItem[];
+}
+
+export interface PsqlTask {
+  categoryId: number;
+  content: string;
+  createdAt: string;
+  failedReason: string;
+  id: number;
+  isRaw: boolean;
+  source: string;
+  status: string;
+  title: string;
+  tokenCount: number;
+  type: string;
+  updatedAt: string;
+  uploadId: number;
+  userId: number;
 }
 
 export interface ResOauthRedirect {
@@ -174,6 +201,13 @@ export interface ResTaskDetailResponse {
 export interface ResTaskListResponse {
   code: string;
   data: PayloadTaskListResponse;
+  message: string;
+  success: boolean;
+}
+
+export interface ResTaskSubmitBatchResponse {
+  code: string;
+  data: PayloadTaskSubmitBatchResponse;
   message: string;
   success: boolean;
 }
@@ -225,6 +259,10 @@ export type TaskDetailError = ResponseErrorResponse;
 export type TaskListData = ResTaskListResponse;
 
 export type TaskListError = ResponseErrorResponse;
+
+export type TaskSubmitBatchData = ResTaskSubmitBatchResponse;
+
+export type TaskSubmitBatchError = ResponseErrorResponse;
 
 export type TaskSubmitData = ResTaskSubmitResponse;
 
@@ -365,6 +403,22 @@ export namespace Task {
     export type RequestBody = PayloadTaskSubmitRequest;
     export type RequestHeaders = {};
     export type ResponseBody = TaskSubmitData;
+  }
+
+  /**
+   * No description
+   * @tags task
+   * @name TaskSubmitBatch
+   * @request POST:/task/submit/batch
+   * @response `200` `TaskSubmitBatchData` OK
+   * @response `400` `ResponseErrorResponse` Bad Request
+   */
+  export namespace TaskSubmitBatch {
+    export type RequestParams = {};
+    export type RequestQuery = {};
+    export type RequestBody = never;
+    export type RequestHeaders = {};
+    export type ResponseBody = TaskSubmitBatchData;
   }
 
   /**
@@ -708,6 +762,22 @@ export class Backend<
         method: "POST",
         body: body,
         type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags task
+     * @name TaskSubmitBatch
+     * @request POST:/task/submit/batch
+     * @response `200` `TaskSubmitBatchData` OK
+     * @response `400` `ResponseErrorResponse` Bad Request
+     */
+    taskSubmitBatch: (params: RequestParams = {}) =>
+      this.request<TaskSubmitBatchData, TaskSubmitBatchError>({
+        path: `/task/submit/batch`,
+        method: "POST",
         ...params,
       }),
 

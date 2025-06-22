@@ -1,19 +1,19 @@
 <script lang="ts">
-	import type { HTMLAttributes } from "svelte/elements";
-	import { cn, type WithElementRef } from "$/lib/shadcn/utils.js";
+	import type { HTMLAttributes } from 'svelte/elements'
+	import { cn, type WithElementRef } from '$/lib/shadcn/utils.js'
 
 	let {
 		ref = $bindable(null),
 		class: className,
 		children,
 		...restProps
-	}: WithElementRef<HTMLAttributes<HTMLUListElement>> = $props();
+	}: WithElementRef<HTMLAttributes<HTMLUListElement>> = $props()
 </script>
 
 <ul
 	bind:this={ref}
 	data-slot="pagination-content"
-	class={cn("flex flex-row items-center gap-1", className)}
+	class={cn('flex flex-row items-center gap-1', className)}
 	{...restProps}
 >
 	{@render children?.()}

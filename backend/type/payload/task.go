@@ -48,10 +48,19 @@ type OverviewHistoryItem struct {
 }
 
 type Overview struct {
-	Histories      []*OverviewHistoryItem `json:"histories"`
-	TokenHistories *int32                 `json:"tokenHistories"`
-	TokenCount     *int32                 `json:"tokenCount"`
-	PoolTokenCount *int32                 `json:"poolTokenCount"`
+	TokenCount *int32                   `json:"tokenCount"`
+	Histories  []*OverviewHistoryItem   `json:"histories"`
+	PoolTokens []*PoolTokenCategoryItem `json:"poolTokens"`
+}
+
+type PoolTokenCategoryItem struct {
+	CategoryId   *uint64 `json:"categoryId"`
+	CategoryName *string `json:"categoryName"`
+	TokenCount   *int32  `json:"tokenCount"`
+}
+
+type PoolTokenOverview struct {
+	Categories []*PoolTokenCategoryItem `json:"categories"`
 }
 
 type TaskDetailRequest struct {
