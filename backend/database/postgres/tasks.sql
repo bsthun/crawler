@@ -1,6 +1,6 @@
 -- name: TaskCreateForUserId :one
-INSERT INTO tasks (user_id, category_id, type, url)
-VALUES ($1, $2, $3, $4)
+INSERT INTO tasks (user_id, category_id, type, url, is_raw)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: TaskListByUserId :many
@@ -30,7 +30,7 @@ WITH daily_stats AS (
     ) d
     LEFT JOIN tasks ON DATE(tasks.created_at) = d.day_date AND tasks.user_id = $1
     GROUP BY d.day_date
-    ORDER BY d.day_date DESC
+    ORDER BY d.day_date
 ),
 token_stats AS (
     SELECT 

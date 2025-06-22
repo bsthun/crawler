@@ -19,6 +19,7 @@ func (r *Service) TaskCreate(ctx context.Context, userId *uint64, categoryName *
 		CategoryId: category.Id,
 		Type:       taskType,
 		Url:        url,
+		IsRaw:      gut.Ptr(false),
 	})
 	if err != nil {
 		return nil, gut.Err(false, "failed to create task", err)

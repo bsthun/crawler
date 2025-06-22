@@ -48,7 +48,7 @@ type OverviewHistoryItem struct {
 
 type Overview struct {
 	Histories      []*OverviewHistoryItem `json:"histories"`
-	TokenHistories *int32                 `json:"token_histories"`
-	TokenCount     *int32                 `json:"token_count"`
-	PoolTokenCount *int32                 `json:"pool_token_count"`
+	TokenHistories *int32                 `json:"tokenHistories"`
+	TokenCount     *int32                 `json:"tokenCount"`
+	PoolTokenCount *int32                 `json:"poolTokenCount"`
 }
