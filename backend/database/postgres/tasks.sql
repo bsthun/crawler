@@ -1,6 +1,6 @@
 -- name: TaskCreateForUserId :one
-INSERT INTO tasks (user_id, category_id, type, source, is_raw, title, content)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO tasks (user_id, upload_id, category_id, type, source, is_raw, title, content)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: TaskListByUserId :many

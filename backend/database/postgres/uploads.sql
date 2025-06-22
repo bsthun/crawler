@@ -8,3 +8,8 @@ SELECT *
 FROM uploads
 WHERE user_id = $1
 ORDER BY created_at DESC;
+
+-- name: UploadCreate :one
+INSERT INTO uploads (user_id)
+VALUES ($1)
+RETURNING *;
