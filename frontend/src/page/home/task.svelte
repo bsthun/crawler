@@ -139,7 +139,7 @@
         <div class="mb-6 grid gap-4">
             {#each filteredTasks(tasks.tasks || []) as task}
                 <Card class="shadow-sm transition-shadow duration-200 hover:shadow-md">
-                    <div class="flex items-center justify-between px-4">
+                    <div class="flex items-center justify-between px-4 gap-2">
                         <div class="flex flex-1 items-center gap-4">
                             <!-- Upload ID and Date -->
                             <div class="flex min-w-[120px] items-center gap-2">
@@ -169,19 +169,15 @@
                                     </a>
                                 </div>
                             {/if}
-
-                            <!-- Error Message -->
-                            {#if task.failedReason}
-                                <div class="max-w-[150px] truncate text-sm text-red-600" title={task.failedReason}>
-                                    Error: {task.failedReason}
-                                </div>
-                            {/if}
                         </div>
 
-                        <!-- Actions -->
-
+                        {#if task.failedReason}
+                            <div class="max-w-[150px] truncate text-sm text-red-600" title={task.failedReason}>
+                                {task.failedReason}
+                            </div>
+                        {/if}
                         <span
-                                class="mr-2 rounded-full px-2 py-1 text-xs {task.status === 'completed'
+                                class="rounded-full px-2 py-1 text-xs {task.status === 'completed'
 								? 'bg-green-100 text-green-800'
 								: task.status === 'failed'
 									? 'bg-red-100 text-red-800'

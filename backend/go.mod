@@ -8,6 +8,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/getsentry/sentry-go v0.33.0
 	github.com/go-playground/validator/v10 v10.26.0
+	github.com/go-resty/resty/v2 v2.16.5
 	github.com/gofiber/fiber/v2 v2.52.8
 	github.com/gofiber/jwt/v3 v3.3.10
 	github.com/golang-jwt/jwt/v4 v4.5.2

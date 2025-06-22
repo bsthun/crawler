@@ -9,6 +9,7 @@ import (
 	"github.com/bsthun/gut"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
+	"strings"
 )
 
 func Init(config *config.Config, migration embed.FS) common.Database {
@@ -37,7 +38,9 @@ func Init(config *config.Config, migration embed.FS) common.Database {
 	goose.SetBaseFS(migration)
 	goose.SetTableName("_gooses")
 	if err := goose.Up(postgres, "database/postgres/migration"); err != nil {
-		gut.Fatal("failed to run migrations", err)
+		if !strings.Contains(err.Error(), "directory does not exist") {
+			gut.Fatal("failed to run migrations", err)
+		}
 	}
 
 	return database

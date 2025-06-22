@@ -60,3 +60,24 @@ FROM categories
 LEFT JOIN tasks ON categories.id = tasks.category_id
 GROUP BY categories.id, categories.name
 ORDER BY categories.name;
+
+-- name: TaskClaimPending :one
+UPDATE tasks 
+SET status = 'processing', updated_at = NOW()
+WHERE id = (
+  SELECT id FROM tasks 
+  WHERE status = 'queuing' 
+  ORDER BY created_at 
+  LIMIT 1
+) AND status = 'queuing'
+RETURNING *;
+
+-- name: TaskUpdateCompleted :exec
+UPDATE tasks 
+SET status = 'completed', title = $2, content = $3, updated_at = NOW()
+WHERE id = $1;
+
+-- name: TaskUpdateFailed :exec
+UPDATE tasks 
+SET status = 'failed', failed_reason = $2, updated_at = NOW()
+WHERE id = $1;

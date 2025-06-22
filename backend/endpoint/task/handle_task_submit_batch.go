@@ -41,6 +41,12 @@ func (r *Handler) HandleTaskSubmitBatch(c *fiber.Ctx) error {
 		return gut.Err(false, "csv file is empty", nil)
 	}
 
+	// * create upload record
+	upload, err := r.database.P().UploadCreate(c.Context(), l.UserId)
+	if err != nil {
+		return gut.Err(false, "failed to create upload record", err)
+	}
+
 	var createdTasks []*psql.Task
 
 	// * iterate through csv records
@@ -70,9 +76,9 @@ func (r *Handler) HandleTaskSubmitBatch(c *fiber.Ctx) error {
 
 		// * check content
 		if content != "" {
-			task, er = r.taskProcedure.TaskRawCreate(c.Context(), l.UserId, &category, &taskType, &source, gut.Ptr(""), &content)
+			task, er = r.taskProcedure.TaskRawCreate(c.Context(), l.UserId, upload.Id, &category, &taskType, &source, gut.Ptr(""), &content)
 		} else {
-			task, er = r.taskProcedure.TaskCreate(c.Context(), l.UserId, &category, &taskType, &source)
+			task, er = r.taskProcedure.TaskCreate(c.Context(), l.UserId, upload.Id, &category, &taskType, &source)
 		}
 
 		if er != nil {

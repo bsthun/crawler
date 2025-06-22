@@ -9,21 +9,24 @@ import (
 )
 
 type Config struct {
-	Environment          *enum.Environment `yaml:"environment" validate:"required"`
-	WebRoot              *string           `yaml:"webRoot" validate:"omitempty"`
-	WebListen            [2]*string        `yaml:"webListen" validate:"required"`
-	FrontendUrl          *string           `yaml:"frontendUrl" validate:"required"`
-	Secret               *string           `yaml:"secret" validate:"required"`
-	PostgresDsn          *string           `yaml:"postgresDsn" validate:"required"`
-	QdrantDsn            *string           `yaml:"qdrantDsn" validate:"required"`
-	QdrantCollection     *string           `yaml:"qdrantCollection" validate:"required"`
-	QdrantApiKey         *string           `yaml:"qdrantApiKey" validate:"required"`
-	OllamaBaseUrl        *string           `yaml:"ollamaBaseUrl" validate:"required"`
-	OllamaModel          *string           `yaml:"ollamaModel" validate:"required"`
-	OllamaEmbeddingModel *string           `yaml:"ollamaEmbeddingModel" validate:"required"`
-	OauthClientId        *string           `yaml:"oauthClientId" validate:"required"`
-	OauthClientSecret    *string           `yaml:"oauthClientSecret" validate:"required"`
-	OauthEndpoint        *string           `yaml:"oauthEndpoint" validate:"required"`
+	Environment            *enum.Environment `yaml:"environment" validate:"required"`
+	WebRoot                *string           `yaml:"webRoot" validate:"omitempty"`
+	WebListen              [2]*string        `yaml:"webListen" validate:"required"`
+	FrontendUrl            *string           `yaml:"frontendUrl" validate:"required"`
+	Secret                 *string           `yaml:"secret" validate:"required"`
+	PostgresDsn            *string           `yaml:"postgresDsn" validate:"required"`
+	QdrantDsn              *string           `yaml:"qdrantDsn" validate:"required"`
+	QdrantCollection       *string           `yaml:"qdrantCollection" validate:"required"`
+	QdrantApiKey           *string           `yaml:"qdrantApiKey" validate:"required"`
+	OllamaBaseUrl          *string           `yaml:"ollamaBaseUrl" validate:"required"`
+	OllamaModel            *string           `yaml:"ollamaModel" validate:"required"`
+	OllamaEmbeddingModel   *string           `yaml:"ollamaEmbeddingModel" validate:"required"`
+	OauthClientId          *string           `yaml:"oauthClientId" validate:"required"`
+	OauthClientSecret      *string           `yaml:"oauthClientSecret" validate:"required"`
+	OauthEndpoint          *string           `yaml:"oauthEndpoint" validate:"required"`
+	EndpointWebExtract     *string           `yaml:"endpointWebExtract" validate:"required"`
+	EndpointDocExtract     *string           `yaml:"endpointDocExtract" validate:"required"`
+	EndpointYoutubeExtract *string           `yaml:"endpointYoutubeExtract" validate:"required"`
 }
 
 func Init() *Config {
