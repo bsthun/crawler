@@ -21,8 +21,9 @@ func (r *Handler) HandleState(c *fiber.Ctx) error {
 
 	// * response
 	return c.JSON(response.Success(c, &payload.StateResponse{
-		UserId:   user.Id,
-		Email:    user.Email,
-		PhotoUrl: user.PhotoUrl,
+		UserId:      user.Id,
+		DisplayName: user.Firstname,
+		Email:       user.Email,
+		PhotoUrl:    user.PhotoUrl,
 	}))
 }

@@ -21,9 +21,13 @@ func Bind(
 	public.Post("/login/callback", publicEndpoint.HandleLoginCallback)
 
 	// * state endpoints
-	state := api.Group("/state", middleware.Jwt())
+	state := api.Group("/state", middleware.Jwt(true))
 	state.Post("/state", stateEndpoint.HandleState)
 
+	// * task endpoints
+	task := api.Group("/task", middleware.Jwt(true))
+	task.Post("/submit", taskEndpoint.HandleTaskSubmit)
+
 	// * static files
-	app.Static("/attachment", ".local/attachment")
+	app.Static("/file", ".local/file")
 }

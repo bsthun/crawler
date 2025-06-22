@@ -7,13 +7,16 @@ import (
 	"github.com/gofiber/jwt/v3"
 )
 
-func (r *Middleware) Jwt() fiber.Handler {
+func (r *Middleware) Jwt(require bool) fiber.Handler {
 	conf := jwtware.Config{
 		SigningKey:  []byte(*r.config.Secret),
 		TokenLookup: "cookie:login",
 		ContextKey:  "l",
 		Claims:      new(common.UserClaims),
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			if !require {
+				return c.Next()
+			}
 			return gut.Err(false, "jwt validation failure", err)
 		},
 	}

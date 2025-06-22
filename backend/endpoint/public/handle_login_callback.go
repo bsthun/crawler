@@ -49,7 +49,7 @@ func (r *Handler) HandleLoginCallback(c *fiber.Ctx) error {
 	if err != nil {
 		// * if user not exist, create new user
 		if errors.Is(err, sql.ErrNoRows) {
-			user, err = r.database.P().UserCreateFromOidc(c.Context(), &psql.UserCreateFromOidcParams{
+			user, err = r.database.P().UserCreate(c.Context(), &psql.UserCreateParams{
 				Oid:       oidcClaims.Id,
 				Firstname: oidcClaims.FirstName,
 				Lastname:  oidcClaims.Lastname,
