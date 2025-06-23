@@ -59,7 +59,12 @@ func invoke(
 
 	lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			go worker.run()
+			go func() {
+				for {
+					worker.process()
+					time.Sleep(1 * time.Second)
+				}
+			}()
 			gut.Debug("worker started")
 			return nil
 		},
@@ -68,16 +73,6 @@ func invoke(
 			return nil
 		},
 	})
-}
-
-func (r *Worker) run() {
-	for {
-		// * process one task
-		r.process()
-
-		// * sleep 1 second before next iteration
-		time.Sleep(1 * time.Second)
-	}
 }
 
 func (r *Worker) process() {

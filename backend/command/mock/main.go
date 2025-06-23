@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gofiber/fiber/v2"
 	"log"
+	"time"
 )
 
 func main() {
@@ -14,6 +15,7 @@ func main() {
 }
 
 func extractHandler(c *fiber.Ctx) error {
+	time.Sleep(10 * time.Second)
 	result := map[string]any{
 		"title": "Document Title",
 		"text":  "Extracted text from the document",

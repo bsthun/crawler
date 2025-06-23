@@ -38,7 +38,7 @@ func Init(config *config.Config, migration embed.FS) common.Database {
 	goose.SetBaseFS(migration)
 	goose.SetTableName("_gooses")
 	if err := goose.Up(postgres, "database/postgres/migration"); err != nil {
-		if !strings.Contains(err.Error(), "directory does not exist") {
+		if !strings.HasSuffix(err.Error(), "directory does not exist") {
 			gut.Fatal("failed to run migrations", err)
 		}
 	}

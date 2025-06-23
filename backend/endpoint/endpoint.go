@@ -16,6 +16,7 @@ func Bind(
 	middleware *middleware.Middleware,
 ) {
 	api := app.Group("/api")
+	api.Use(middleware.Id())
 
 	// * public endpoints
 	public := api.Group("/public")

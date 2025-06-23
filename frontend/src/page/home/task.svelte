@@ -34,6 +34,13 @@
         return new Date(dateString).toLocaleDateString()
     }
 
+    const formatTime = (dateString: string) => {
+        return new Date(dateString).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+        })
+    }
+
     const loadFilters = () => {
         Promise.all([backend.task.taskUploadList(), backend.task.taskCategoryList()])
             .then(([uploadsRes, categoriesRes]) => {
@@ -138,37 +145,35 @@
         <!-- Task List -->
         <div class="mb-6 grid gap-4">
             {#each filteredTasks(tasks.tasks || []) as task}
-                <Card class="shadow-sm transition-shadow duration-200 hover:shadow-md">
-                    <div class="flex items-center justify-between px-4 gap-2">
+                <Card class="shadow-sm py-4 transition-shadow duration-200 hover:shadow-md">
+                    <div class="flex items-center justify-between px-4 gap-4">
                         <div class="flex flex-1 items-center gap-4">
-                            <!-- Upload ID and Date -->
-                            <div class="flex min-w-[120px] items-center gap-2">
-                                {#if task.uploadId}
-                                    <span class="text-sm font-medium min-w-6">#{task.uploadId}</span>
-                                {:else}
-                                    <span class="min-w-6"></span>
-                                {/if}
-                                <span class="text-muted-foreground text-xs">{formatDate(task.createdAt)}</span>
+                            <div class="flex flex-col min-w-[86px] items-center gap-1">
+                                <span class="text-muted-foreground text-sm">{formatDate(task.createdAt)}</span>
+                                <span class="text-muted-foreground text-sm">{formatTime(task.createdAt)}</span>
                             </div>
 
-                            <!-- Task ID and Status -->
-                            <div class="flex items-center gap-2">
-                                <span class="text-sm font-medium">Task #{task.id}</span>
+                            <div class="flex flex-col min-w-[128px] gap-1">
+                                <span class="text-sm font-medium">#{task.id}</span>
+                                {#if task.uploadId}
+                                    <span class="text-sm font-medium min-w-6 opacity-50">#{task.uploadId}</span>
+                                {/if}
                             </div>
 
                             <!-- Type and Tokens -->
-                            <div class="text-muted-foreground text-sm">
-                                {task.type} • {task.tokenCount} tokens
-                            </div>
-
-                            <!-- Source Link -->
-                            {#if task.source}
-                                <div class="max-w-screen-xs truncate text-sm text-blue-600 hover:text-blue-800">
-                                    <a href={task.source} target="_blank" rel="noopener noreferrer" title={task.source}>
-                                        {task.source}
-                                    </a>
+                            <div class="flex flex-col gap-1">
+                                <div class="text-muted-foreground text-sm">
+                                    {task.type} • {task.tokenCount} tokens
                                 </div>
-                            {/if}
+                                {#if task.source}
+                                    <div class="max-w-screen-xs truncate text-sm text-blue-600 hover:text-blue-800">
+                                        <a href={task.source} target="_blank" rel="noopener noreferrer"
+                                           title={task.source}>
+                                            {task.source}
+                                        </a>
+                                    </div>
+                                {/if}
+                            </div>
                         </div>
 
                         {#if task.failedReason}
