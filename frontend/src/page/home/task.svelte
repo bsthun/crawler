@@ -11,6 +11,7 @@
 	import { Loader2Icon, Plus } from 'lucide-svelte'
 	import { backend, catcher } from '$/util/backend.ts'
 	import TaskSubmitDialog from './component/TaskSubmitDialog.svelte'
+	import TaskDetailDialog from './component/TaskDetailDialog.svelte'
 	import type {
 		PayloadTaskListResponse,
 		PayloadTaskUploadListResponse,
@@ -197,7 +198,9 @@
 							{task.status}
 						</span>
 						<div class="flex gap-2">
-							<Button variant="outline" size="sm">View Details</Button>
+							<TaskDetailDialog taskId={task.id}>
+								<Button variant="outline" size="sm">View Details</Button>
+							</TaskDetailDialog>
 						</div>
 					</div>
 				</Card>
