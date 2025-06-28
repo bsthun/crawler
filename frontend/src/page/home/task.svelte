@@ -163,11 +163,11 @@
 
 							<!-- Type and Tokens -->
 							<div class="flex flex-col gap-1">
-								<div class="text-muted-foreground text-sm">
+								<div class="text-muted-foreground text-xs uppercase">
 									{task.type} • {task.tokenCount} tokens
 								</div>
 								{#if task.source}
-									<div class="max-w-screen-xs truncate text-sm text-blue-600 hover:text-blue-800">
+									<div class="text-sm max-w-md truncate text-blue-600 hover:text-blue-800">
 										<a
 											href={task.source}
 											target="_blank"

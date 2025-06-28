@@ -80,5 +80,9 @@ WHERE id = $1;
 
 -- name: TaskUpdateFailed :exec
 UPDATE tasks
-SET status = 'failed', failed_reason = $2
+SET status = 'failed',
+    failed_reason = $2,
+    title = COALESCE($3, title),
+    content = COALESCE($4, content),
+    token_count = COALESCE($5, token_count)
 WHERE id = $1;

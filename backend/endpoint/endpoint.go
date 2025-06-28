@@ -1,11 +1,13 @@
 package endpoint
 
 import (
+	"backend/common/config"
 	"backend/common/fiber/middleware"
 	"backend/endpoint/public"
 	"backend/endpoint/state"
 	"backend/endpoint/task"
 	"github.com/gofiber/fiber/v2"
+	"path/filepath"
 )
 
 func Bind(
@@ -14,6 +16,7 @@ func Bind(
 	stateEndpoint *stateEndpoint.Handler,
 	taskEndpoint *taskEndpoint.Handler,
 	middleware *middleware.Middleware,
+	config *config.Config,
 ) {
 	api := app.Group("/api")
 	api.Use(middleware.Id())
@@ -39,4 +42,10 @@ func Bind(
 
 	// * static files
 	app.Static("/file", ".local/file")
+
+	// * static
+	app.Static("/", *config.WebRoot)
+	app.Get("/*", func(c *fiber.Ctx) error {
+		return c.SendFile(filepath.Join(*config.WebRoot, "index.html"))
+	})
 }
