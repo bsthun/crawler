@@ -75,10 +75,10 @@ RETURNING *;
 
 -- name: TaskUpdateCompleted :exec
 UPDATE tasks
-SET status = 'completed', title = $2, content = $3, updated_at = NOW()
+SET status = 'completed', title = $2, content = $3, token_count = $4
 WHERE id = $1;
 
 -- name: TaskUpdateFailed :exec
 UPDATE tasks
-SET status = 'failed', failed_reason = $2, updated_at = NOW()
+SET status = 'failed', failed_reason = $2
 WHERE id = $1;

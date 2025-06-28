@@ -14,13 +14,13 @@ func (r *Handler) HandleStateOverview(c *fiber.Ctx) error {
 	// * login claims
 	l := c.Locals("l").(*jwt.Token).Claims.(*common.LoginClaims)
 
-	// * get overview statistics from database
+	// * get overview statistics
 	statsRows, err := r.database.P().TaskOverviewByUserId(c.Context(), l.UserId)
 	if err != nil {
 		return gut.Err(false, "failed to get overview statistics", err)
 	}
 
-	// * get pool token statistics by category from database
+	// * get pool token
 	categoryRows, err := r.database.P().PoolTokenOverviewByCategory(c.Context())
 	if err != nil {
 		return gut.Err(false, "failed to get pool token overview by category", err)
