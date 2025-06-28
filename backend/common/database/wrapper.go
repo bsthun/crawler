@@ -39,7 +39,7 @@ func PrintQueryInfo(query string, args ...any) {
 	}
 
 	// * print the formatted output
-	fmt.Printf("%s • Database • %s %s\n", gut.PrintTime(), queryName, argsStr)
+	fmt.Printf("%s%sDatabase%s%s%s\n", gut.PrintTime(), gut.PrintSeparator(), gut.PrintSeparator(), queryName, argsStr)
 }
 
 func resolveArg(arg any) any {
