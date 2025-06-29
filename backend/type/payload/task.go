@@ -18,6 +18,7 @@ type TaskSubmitResponse struct {
 
 type TaskListRequest struct {
 	UploadId *uint64 `json:"uploadId"`
+	UserId   *uint64 `json:"userId"`
 	common.Paginate
 }
 
@@ -109,4 +110,20 @@ type TaskUploadListResponse struct {
 type TaskSubmitBatchResponse struct {
 	TasksCreated *int         `json:"tasksCreated"`
 	Tasks        []*psql.Task `json:"tasks"`
+}
+
+type UserListItem struct {
+	Id        *uint64    `json:"id"`
+	Oid       *string    `json:"oid"`
+	Firstname *string    `json:"firstname"`
+	Lastname  *string    `json:"lastname"`
+	Email     *string    `json:"email"`
+	PhotoUrl  *string    `json:"photoUrl"`
+	IsAdmin   *bool      `json:"isAdmin"`
+	CreatedAt *time.Time `json:"createdAt"`
+	UpdatedAt *time.Time `json:"updatedAt"`
+}
+
+type UserListResponse struct {
+	Users []*UserListItem `json:"users"`
 }

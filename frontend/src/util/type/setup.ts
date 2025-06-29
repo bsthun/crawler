@@ -1,12 +1,10 @@
-// * use generic response type from generated backend
-import type { ResponseSuccessResponse } from '$/util/backend/backend'
-
 export type Setup = {
 	profile: {
-		id?: string
+		userId?: string
 		name?: string
 		email?: string
-		userId?: string
+		photoUrl?: string
+		isAdmin?: boolean
 	}
 	initialized: boolean
 	reload: () => Promise<void>

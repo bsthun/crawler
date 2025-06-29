@@ -27,6 +27,6 @@
 	<div class="flex items-center gap-[18px]">
 		<Link to="/">
 			<p class="text-[18px] font-medium">Crawler</p>
-		</Link>	
+		</Link>
 	</div>
 </nav>

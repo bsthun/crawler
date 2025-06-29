@@ -6,7 +6,7 @@
 
 	const setup = getContext<Writable<Setup>>('setup')
 
-	$: if (!$setup.profile.id) {
+	$: if (!$setup.profile.userId) {
 		window.location.href = '/entry/login'
 	}
 </script>

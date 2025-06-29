@@ -31,6 +31,12 @@ func (r *Handler) HandleTaskList(c *fiber.Ctx) error {
 		}
 	}
 
+	// * validate userId
+	// TODO: Check for admin user override
+	if body.UserId != nil {
+		l.UserId = body.UserId
+	}
+
 	// * count tasks
 	count, err := r.database.P().TaskCountByUserId(c.Context(), &psql.TaskCountByUserIdParams{
 		UserId:   l.UserId,

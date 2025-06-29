@@ -33,10 +33,11 @@
 					setup.update((value) => ({
 						...value,
 						profile: {
-							id: res.data.userId.toString(),
+							userId: res.data.userId.toString(),
 							name: res.data.displayName,
 							email: res.data.email,
-							avatar: res.data.photoUrl,
+							photoUrl: res.data.photoUrl,
+							isAdmin : res.data.isAdmin,
 						},
 						initialized: true,
 					}))

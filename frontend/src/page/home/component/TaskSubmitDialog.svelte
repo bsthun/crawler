@@ -11,12 +11,12 @@
 	import { FileText, Upload, AlertCircle, CheckCircle } from 'lucide-svelte'
 	import { toast } from 'svelte-sonner'
 
-	export let categories: PayloadTaskCategoryListResponse | null = null
+	export let categories: PayloadTaskCategoryListResponse
 	export let open = false
 
 	const dispatch = createEventDispatcher()
 
-	let selectedCategory = categories[0]
+	let selectedCategory = categories ?? categories[0]
 	let selectedType: PayloadTaskSubmitRequestTypeEnum = PayloadTaskSubmitRequestTypeEnum.Web
 	let source = ''
 	let csvFile: File | null = null
@@ -187,7 +187,7 @@
 					<Label for="type">Type</Label>
 					<select id="type" bind:value={selectedType} class="w-full rounded-md border px-3 py-2" required>
 						<option value="web">Web</option>
-						<option value="doc">Document</option>
+						<option value="doc">PDF</option>
 						<option value="youtube">YouTube</option>
 					</select>
 				</div>

@@ -39,7 +39,7 @@
 </script>
 
 <Container class="flex flex-col gap-6">
-	{#if $setup?.profile?.id}
+	{#if $setup?.profile?.userId}
 		<Card.Root>
 			<Card.Content>
 				<div class="flex items-center space-x-4">

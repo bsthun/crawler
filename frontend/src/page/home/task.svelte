@@ -17,18 +17,26 @@
 		PayloadTaskUploadListResponse,
 		PayloadTaskCategoryListResponse,
 		PayloadTaskListItem,
+		PayloadUserListResponse,
 	} from '$/util/backend/backend.ts'
 	import Container from '$/component/layout/Container.svelte'
 	import Pagination from '$/component/share/Pagination.svelte'
+	import { getContext } from 'svelte'
+	import type { Writable } from 'svelte/store'
+	import type { Setup } from '$/util/type/setup'
+
+	const setup = getContext<Writable<Setup>>('setup')
 
 	let tasks: PayloadTaskListResponse | null = null
 	let uploads: PayloadTaskUploadListResponse | null = null
 	let categories: PayloadTaskCategoryListResponse | null = null
+	let users: PayloadUserListResponse | null = null
 	let loading = true
 	let currentPage = 1
 	let perPage = 12
 	let selectedUploadId: number | null = null
 	let selectedCategoryId = 0
+	let selectedUserId: number | null = null
 	let dialogOpen = false
 
 	const formatDate = (dateString: string) => {
@@ -43,13 +51,24 @@
 	}
 
 	const loadFilters = () => {
-		Promise.all([backend.task.taskUploadList(), backend.task.taskCategoryList()])
-			.then(([uploadsRes, categoriesRes]) => {
+		const promises = [backend.task.taskUploadList(), backend.task.taskCategoryList()]
+		
+		if ($setup?.profile?.isAdmin) {
+			promises.push(backend.admin.userList())
+		}
+
+		Promise.all(promises)
+			.then((results) => {
+				const [uploadsRes, categoriesRes, usersRes] = results
+				
 				if (uploadsRes.success && uploadsRes.data) {
 					uploads = uploadsRes.data
 				}
 				if (categoriesRes.success && categoriesRes.data) {
 					categories = categoriesRes.data
+				}
+				if (usersRes?.success && usersRes.data) {
+					users = usersRes.data
 				}
 			})
 			.catch((err) => {
@@ -66,6 +85,7 @@
 				limit: perPage,
 				offset,
 				uploadId: selectedUploadId!,
+				userId: selectedUserId!,
 			})
 			.then((res) => {
 				if (res.success && res.data) {
@@ -85,7 +105,13 @@
 	}
 
 	$: {
-		if (currentPage || selectedUploadId !== undefined || selectedCategoryId !== undefined) {
+		if (selectedUserId === null && $setup?.profile?.userId) {
+			selectedUserId = $setup.profile.userId
+		}
+	}
+
+	$: {
+		if (currentPage || selectedUploadId !== undefined || selectedCategoryId !== undefined || selectedUserId !== undefined) {
 			mount()
 		}
 	}
@@ -134,6 +160,20 @@
 				{/if}
 			</select>
 		</div>
+		{#if $setup?.profile?.isAdmin}
+			<div class="flex flex-col gap-2">
+				<label class="text-sm font-medium">User</label>
+				<select bind:value={selectedUserId} class="min-w-[200px] rounded-md border px-3 py-2">
+					{#if users?.users}
+						{#each users.users as user}
+							<option value={user.id}>
+								{user.firstname} {user.lastname} ({user.email})
+							</option>
+						{/each}
+					{/if}
+				</select>
+			</div>
+		{/if}
 	</div>
 
 	{#if loading || !tasks}

@@ -8,6 +8,7 @@ import (
 	"backend/common/ollama"
 	"backend/common/qdrant"
 	"backend/endpoint"
+	adminEndpoint "backend/endpoint/admin"
 	publicEndpoint "backend/endpoint/public"
 	stateEndpoint "backend/endpoint/state"
 	taskEndpoint "backend/endpoint/task"
@@ -35,6 +36,7 @@ func main() {
 			publicEndpoint.Handle,
 			stateEndpoint.Handle,
 			taskEndpoint.Handle,
+			adminEndpoint.Handle,
 		),
 		fx.Invoke(
 			endpoint.Bind,

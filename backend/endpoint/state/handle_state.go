@@ -25,5 +25,6 @@ func (r *Handler) HandleState(c *fiber.Ctx) error {
 		DisplayName: user.Firstname,
 		Email:       user.Email,
 		PhotoUrl:    user.PhotoUrl,
+		IsAdmin:     user.IsAdmin,
 	}))
 }

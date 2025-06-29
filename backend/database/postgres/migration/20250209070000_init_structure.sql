@@ -8,6 +8,7 @@ CREATE TABLE users
     lastname   VARCHAR(255) NOT NULL,
     email      VARCHAR(255) UNIQUE,
     photo_url  TEXT,
+    is_admin   BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

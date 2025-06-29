@@ -3,6 +3,7 @@ package endpoint
 import (
 	"backend/common/config"
 	"backend/common/fiber/middleware"
+	"backend/endpoint/admin"
 	"backend/endpoint/public"
 	"backend/endpoint/state"
 	"backend/endpoint/task"
@@ -15,6 +16,7 @@ func Bind(
 	publicEndpoint *publicEndpoint.Handler,
 	stateEndpoint *stateEndpoint.Handler,
 	taskEndpoint *taskEndpoint.Handler,
+	adminEndpoint *adminEndpoint.Handler,
 	middleware *middleware.Middleware,
 	config *config.Config,
 ) {
@@ -39,6 +41,10 @@ func Bind(
 	task.Post("/detail", taskEndpoint.HandleTaskDetail)
 	task.Post("/category/list", taskEndpoint.HandleTaskCategoryList)
 	task.Post("/upload/list", taskEndpoint.HandleTaskUploadList)
+
+	// * admin endpoints
+	admin := api.Group("/admin", middleware.Jwt(true))
+	admin.Post("/user/list", adminEndpoint.HandleUserList)
 
 	// * static files
 	app.Static("/file", ".local/file")

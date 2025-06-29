@@ -52,7 +52,7 @@ func (r *Handler) HandleTaskSubmitBatch(c *fiber.Ctx) error {
 	// * iterate through csv records
 	for i, record := range records {
 		// * skip header row if exists
-		if i == 0 && strings.Contains(record[0], "category") {
+		if i == 0 && (strings.Contains(record[0], "category") || strings.Contains(record[0], "topic")) {
 			continue
 		}
 
@@ -62,12 +62,16 @@ func (r *Handler) HandleTaskSubmitBatch(c *fiber.Ctx) error {
 		}
 
 		category := strings.TrimSpace(record[0])
-		taskType := strings.TrimSpace(record[1])
-		source := strings.TrimSpace(record[2])
+		source := strings.TrimSpace(record[1])
+		taskType := strings.TrimSpace(record[2])
 		content := strings.TrimSpace(record[3])
 
+		if taskType == "pdf" {
+			taskType = "doc"
+		}
+
 		// * validate required fields
-		if category == "" || taskType == "" || source == "" {
+		if category == "" || source == "" || taskType == "" {
 			continue
 		}
 
