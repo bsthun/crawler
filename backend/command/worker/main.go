@@ -28,7 +28,7 @@ type ExtractResponse struct {
 }
 
 type ErrorResponse struct {
-	Error string `json:"error"`
+	Error string `json:"detail"`
 }
 
 type TokenResponse struct {
@@ -165,7 +165,7 @@ func (r *Worker) process() {
 			// * update task as failed with error reason
 			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
 				Id:           task.Id,
-				FailedReason: &errorResp.Error,
+				FailedReason: gut.Ptr(fmt.Sprintf("extraction: %s", errorResp.Error)),
 				Title:        nil,
 				Content:      nil,
 				TokenCount:   nil,
@@ -213,7 +213,7 @@ func (r *Worker) process() {
 
 	// * split content to chunks
 	splitter := textsplitter.NewMarkdownTextSplitter(
-		textsplitter.WithChunkSize(262144),
+		textsplitter.WithChunkSize(65536),
 		textsplitter.WithChunkOverlap(64),
 		textsplitter.WithSeparators([]string{
 			"\n\n", // * paragraphs first

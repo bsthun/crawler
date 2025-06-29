@@ -63,6 +63,25 @@ CREATE TRIGGER auto_updated_at_users
     ON users
     FOR EACH ROW
 EXECUTE FUNCTION auto_updated_at();
+
+CREATE TRIGGER auto_updated_at_categories
+    BEFORE UPDATE
+    ON categories
+    FOR EACH ROW
+EXECUTE FUNCTION auto_updated_at();
+
+CREATE TRIGGER auto_updated_at_uploads
+    BEFORE UPDATE
+    ON uploads
+    FOR EACH ROW
+EXECUTE FUNCTION auto_updated_at();
+
+CREATE TRIGGER auto_updated_at_tasks
+    BEFORE UPDATE
+    ON tasks
+    FOR EACH ROW
+EXECUTE FUNCTION auto_updated_at();
+
 -- +goose StatementEnd
 
 -- +goose Down
