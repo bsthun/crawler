@@ -65,11 +65,19 @@ ORDER BY categories.name;
 UPDATE tasks
 SET status = 'processing'
 WHERE id = (
-    SELECT id FROM tasks
-    WHERE status = 'queuing'
-    ORDER BY RANDOM() * user_id, created_at
+    SELECT t.id
+    FROM tasks t
+    WHERE t.status = 'queuing'
+      AND t.user_id = (
+        SELECT user_id
+        FROM tasks
+        WHERE status = 'queuing'
+        ORDER BY RANDOM()
+        LIMIT 1
+    )
+    ORDER BY t.created_at
     LIMIT 1
-    FOR UPDATE SKIP LOCKED
+        FOR UPDATE SKIP LOCKED
 )
 RETURNING *;
 
