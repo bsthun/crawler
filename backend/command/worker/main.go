@@ -266,7 +266,12 @@ func (r *Worker) process() {
 			CollectionName: *r.config.QdrantCollection,
 			Vector:         embeddingResp.Embeddings,
 			Limit:          uint64(1),
-			ScoreThreshold: gut.Ptr(float32(0.995)),
+			ScoreThreshold: gut.Ptr(float32(0.99995)),
+			WithPayload: &qd.WithPayloadSelector{
+				SelectorOptions: &qd.WithPayloadSelector_Enable{
+					Enable: true,
+				},
+			},
 			Filter: &qd.Filter{
 				Must: []*qd.Condition{
 					{
@@ -313,9 +318,14 @@ func (r *Worker) process() {
 
 		// * check if duplicate found
 		if len(searchResp.Result) > 0 {
+			duplicateTaskId, err := strconv.ParseUint(searchResp.Result[0].Payload["taskId"].GetStringValue(), 10, 64)
+			if err != nil {
+				gut.Fatal("failed to parse duplicate taskId", err)
+			}
+
 			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
 				Id:           task.Id,
-				FailedReason: gut.Ptr(fmt.Sprintf("duplicate #%s", gut.EncodeId(*task.Id))),
+				FailedReason: gut.Ptr(fmt.Sprintf("duplicate #%s %.5f%%", gut.EncodeId(duplicateTaskId), searchResp.Result[0].Score*100)),
 				Title:        title,
 				Content:      content,
 				TokenCount:   &tokenResp.TokenCount,

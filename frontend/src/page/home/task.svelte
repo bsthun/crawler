@@ -184,6 +184,8 @@
 		<p class="text-muted-foreground text-lg">No tasks found</p>
 	{:else}
 		<!-- Task List -->
+		<Pagination class="my-6" count={tasks.count} {perPage} bind:currentPage />
+
 		<div class="mb-6 grid gap-4">
 			{#each filteredTasks(tasks.tasks || []) as task}
 				<Card class="py-4 shadow-sm transition-shadow duration-200 hover:shadow-md">
@@ -246,7 +248,5 @@
 				</Card>
 			{/each}
 		</div>
-
-		<Pagination class="my-6" count={tasks.count} {perPage} bind:currentPage />
 	{/if}
 </Container>

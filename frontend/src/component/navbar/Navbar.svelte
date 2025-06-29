@@ -5,6 +5,8 @@
 	import type { Setup } from '$/util/type/setup'
 	import { onMount } from 'svelte'
 	import { Button } from '$/lib/shadcn/components/ui/button'
+	import { LogOut } from 'lucide-svelte'
+	import Cookies from 'js-cookie'
 
 	let scrolled = false
 
@@ -19,6 +21,12 @@
 			window.removeEventListener('scroll', handleScroll)
 		}
 	})
+
+	// * handle logout functionality
+	const handleLogout = () => {
+		Cookies.remove('login')
+		navigate('/entry/login')
+	}
 </script>
 
 <nav
@@ -29,4 +37,11 @@
 			<p class="text-[18px] font-medium">Crawler</p>
 		</Link>
 	</div>
+
+	<Button
+		variant="ghost"
+		onclick={handleLogout}
+	>
+		<LogOut size={18} />
+	</Button>
 </nav>

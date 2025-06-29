@@ -67,7 +67,7 @@ SET status = 'processing'
 WHERE id = (
     SELECT id FROM tasks
     WHERE status = 'queuing'
-    ORDER BY created_at
+    ORDER BY RANDOM() * user_id, created_at
     LIMIT 1
     FOR UPDATE SKIP LOCKED
 )

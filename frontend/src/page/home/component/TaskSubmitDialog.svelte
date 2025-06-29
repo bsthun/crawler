@@ -16,7 +16,7 @@
 
 	const dispatch = createEventDispatcher()
 
-	let selectedCategory = categories ?? categories[0]
+	let selectedCategory = categories[0]
 	let selectedType: PayloadTaskSubmitRequestTypeEnum = PayloadTaskSubmitRequestTypeEnum.Web
 	let source = ''
 	let csvFile: File | null = null
@@ -170,9 +170,9 @@
 				<div class="space-y-2">
 					<Label for="category">Category</Label>
 					<select
-						id="category"
 						bind:value={selectedCategory}
 						class="w-full rounded-md border px-3 py-2"
+						id="category"
 						required
 					>
 						{#if categories?.categories}
@@ -185,7 +185,7 @@
 
 				<div class="space-y-2">
 					<Label for="type">Type</Label>
-					<select id="type" bind:value={selectedType} class="w-full rounded-md border px-3 py-2" required>
+					<select bind:value={selectedType} class="w-full rounded-md border px-3 py-2" id="type" required>
 						<option value="web">Web</option>
 						<option value="doc">PDF</option>
 						<option value="youtube">YouTube</option>
@@ -194,10 +194,10 @@
 
 				<div class="space-y-2">
 					<Label for="source">Source URL</Label>
-					<Input id="source" type="url" bind:value={source} placeholder="https://example.com" required />
+					<Input bind:value={source} id="source" placeholder="https://example.com" required type="url" />
 				</div>
 
-				<Button onclick={handleSingleSubmit} class="w-full" disabled={!selectedCategory || !source.trim()}>
+				<Button class="w-full" disabled={!selectedCategory || !source.trim()} onclick={handleSingleSubmit}>
 					Submit Task
 				</Button>
 			</div>
@@ -212,7 +212,7 @@
 					role="application"
 				>
 					<div class="flex flex-col items-center space-y-4">
-						<svelte:component this={statusIcon} class="h-12 w-12 text-gray-400" />
+						<svelte:component class="h-12 w-12 text-gray-400" this={statusIcon} />
 
 						{#if csvFile}
 							<div class="pb-1.5 text-center">
@@ -242,23 +242,23 @@
 							</div>
 						{/if}
 
-						<Button variant="outline" onclick={() => fileInput.click()} disabled={uploading}>
+						<Button disabled={uploading} onclick={() => fileInput.click()} variant="outline">
 							<Upload class="mr-2 h-4 w-4" />
 							Browse Files
 						</Button>
 					</div>
 				</div>
 
-				<Button onclick={handleBatchSubmit} class="w-full" disabled={!csvFile || uploading}>
+				<Button class="w-full" disabled={!csvFile || uploading} onclick={handleBatchSubmit}>
 					{uploading ? 'Uploading...' : 'Upload CSV'}
 				</Button>
 
 				<input
-					bind:this={fileInput}
-					type="file"
 					accept=".csv"
-					on:change={handleFileInputChange}
+					bind:this={fileInput}
 					class="hidden"
+					on:change={handleFileInputChange}
+					type="file"
 				/>
 			</div>
 		</div>

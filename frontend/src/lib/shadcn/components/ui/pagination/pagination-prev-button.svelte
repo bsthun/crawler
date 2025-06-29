@@ -17,7 +17,7 @@
 	<span>Previous</span>
 {/snippet}
 
-<PaginationPrimitive.PrevButton
+<PaginationPrimitive.NextButton
 	bind:ref
 	aria-label="Go to previous page"
 	class={cn(
