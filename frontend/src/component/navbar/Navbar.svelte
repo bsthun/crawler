@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { navigate, useLocation } from 'svelte-navigator'
+	import { Link, navigate, useLocation } from 'svelte-navigator'
 	import { getContext } from 'svelte'
 	import type { Writable } from 'svelte/store'
 	import type { Setup } from '$/util/type/setup'
@@ -25,6 +25,8 @@
 	class="fixed inset-x-0 top-0 z-20 mx-auto flex h-11 max-w-screen-xl items-center justify-between bg-white px-10 py-9"
 >
 	<div class="flex items-center gap-[18px]">
-		<p class="text-[18px] font-medium">Crawler</p>
+		<Link to="/">
+			<p class="text-[18px] font-medium">Crawler</p>
+		</Link>	
 	</div>
 </nav>

@@ -233,12 +233,28 @@ func (r *Worker) process() {
 		return
 	}
 
-	// * search in qdrant for similar content
+	// * search in qdrant for similar content within same task type
 	searchResp, err := r.qdrantClient.GetPointsClient().Search(context.Background(), &qd.SearchPoints{
 		CollectionName: *r.config.QdrantCollection,
 		Vector:         embeddingResp.Embeddings,
 		Limit:          uint64(1),
 		ScoreThreshold: gut.Ptr(float32(0.995)),
+		Filter: &qd.Filter{
+			Must: []*qd.Condition{
+				{
+					ConditionOneOf: &qd.Condition_Field{
+						Field: &qd.FieldCondition{
+							Key: "type",
+							Match: &qd.Match{
+								MatchValue: &qd.Match_Keyword{
+									Keyword: *task.Type,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	})
 	if err != nil {
 		if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
@@ -258,7 +274,7 @@ func (r *Worker) process() {
 		spew.Dump(searchResp.Result)
 		if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
 			Id:           task.Id,
-			FailedReason: gut.Ptr("duplicate"),
+			FailedReason: gut.Ptr(fmt.Sprintf("duplicate #%s", gut.EncodeId(*task.Id))),
 			Title:        title,
 			Content:      content,
 			TokenCount:   &tokenResp.TokenCount,
@@ -289,6 +305,11 @@ func (r *Worker) process() {
 			"taskId": {
 				Kind: &qd.Value_StringValue{
 					StringValue: strconv.FormatUint(*task.Id, 10),
+				},
+			},
+			"type": {
+				Kind: &qd.Value_StringValue{
+					StringValue: *task.Type,
 				},
 			},
 		},

@@ -39,7 +39,7 @@ func Handle(config *config.Config, database common.Database) *Handler {
 		ClientSecret: *config.OauthClientSecret,
 		RedirectURL:  redirectUrl,
 		Endpoint:     handler.OidcProvider.Endpoint(),
-		Scopes:       []string{oidc.ScopeOpenID, "state", "email"},
+		Scopes:       []string{oidc.ScopeOpenID, "email", "profile"},
 	}
 
 	return handler
