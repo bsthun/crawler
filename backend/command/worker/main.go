@@ -13,7 +13,6 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
 	qd "github.com/qdrant/go-client/qdrant"
-	"github.com/sony/gobreaker/v2"
 	"github.com/tmc/langchaingo/textsplitter"
 	"go.uber.org/fx"
 	"strconv"
@@ -116,6 +115,16 @@ func (r *Worker) process() {
 		case "youtube":
 			endpoint = *r.config.EndpointYoutubeExtract
 		default:
+			// * invalid task type, should mark as failed
+			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
+				Id:           task.Id,
+				FailedReason: gut.Ptr(fmt.Sprintf("invalid task type: %s", *task.Type)),
+				Title:        nil,
+				Content:      nil,
+				TokenCount:   nil,
+			}); err != nil {
+				gut.Fatal("failed to update task as failed", err)
+			}
 			return
 		}
 
@@ -124,51 +133,62 @@ func (r *Worker) process() {
 			"url": *task.Source,
 		}
 
-		// * extraction service
-		breaker := gobreaker.NewCircuitBreaker[*ExtractResponse](gobreaker.Settings{
-			Name:          "call extraction service",
-			MaxRequests:   2,
-			Interval:      2 * time.Second,
-			Timeout:       0,
-			ReadyToTrip:   nil,
-			OnStateChange: nil,
-			IsSuccessful:  nil,
-		})
-		extractResp, err := breaker.Execute(func() (*ExtractResponse, error) {
-			extractResp := new(ExtractResponse)
-			errorResp := new(ErrorResponse)
-			resp, err := resty.New().R().
-				SetHeader("Content-Type", "application/json").
-				SetBody(payload).
-				SetResult(extractResp).
-				SetError(errorResp).
-				Post(endpoint)
-			if err != nil {
-				return nil, err
-			}
+		// * extraction service with retry
+		extractAttempt := 0
+		extractResp := new(ExtractResponse)
+		errorResp := new(ErrorResponse)
 
-			// * handle server error
-			if resp.StatusCode() >= 500 {
-				return nil, fmt.Errorf("%d (%s)", resp.StatusCode(), resp.Body())
-			}
-
-			// * handle client error
-			if resp.StatusCode() >= 400 {
-				var detail string
-				if errorResp.Error != "" {
-					detail = errorResp.Error
-				} else {
-					detail = string(resp.Body())
-				}
-				return nil, fmt.Errorf(detail)
-			}
-
-			return extractResp, nil
-		})
+	extractAttempt:
+		extractAttempt++
+		resp, err := resty.New().R().
+			SetHeader("Content-Type", "application/json").
+			SetBody(payload).
+			SetResult(extractResp).
+			SetError(errorResp).
+			Post(endpoint)
 		if err != nil {
+			// * network error for extraction
+			if extractAttempt < 3 {
+				time.Sleep(2 * time.Second)
+				goto extractAttempt
+			}
 			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
 				Id:           task.Id,
-				FailedReason: gut.Ptr(fmt.Sprintf("extraction: %v", err)),
+				FailedReason: gut.Ptr(fmt.Sprintf("extraction error: %v", err)),
+				Title:        nil,
+				Content:      nil,
+				TokenCount:   nil,
+			}); err != nil {
+				gut.Fatal("failed to update task as failed", err)
+			}
+			return
+		}
+
+		// * handle server error with retry
+		if resp.StatusCode() >= 500 {
+			if extractAttempt < 3 {
+				time.Sleep(2 * time.Second)
+				goto extractAttempt
+			}
+			// * update task as failed with server error reason
+			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
+				Id:           task.Id,
+				FailedReason: gut.Ptr(fmt.Sprintf("extraction %d (%s)", resp.StatusCode(), resp.Body())),
+				Title:        nil,
+				Content:      nil,
+				TokenCount:   nil,
+			}); err != nil {
+				gut.Fatal("failed to update task as failed", err)
+			}
+			return
+		}
+
+		// * handle client error (4xx should not be retried)
+		if resp.StatusCode() >= 400 {
+			// * update task as failed with error reason
+			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
+				Id:           task.Id,
+				FailedReason: gut.Ptr(fmt.Sprintf("extraction: %s", errorResp.Error)),
 				Title:        nil,
 				Content:      nil,
 				TokenCount:   nil,
@@ -233,46 +253,56 @@ func (r *Worker) process() {
 		if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
 			Id:           task.Id,
 			FailedReason: gut.Ptr(fmt.Sprintf("text splitting error: %v", err)),
+			Title:        title,
+			Content:      content,
+			TokenCount:   &tokenResp.TokenCount,
 		}); err != nil {
 			gut.Fatal("failed to update task as failed", err)
 		}
 		return
 	}
 
+	var pointIds []string
 	for i, chunk := range chunks {
 		// * get embedding
-		breaker := gobreaker.NewCircuitBreaker[*EmbeddingResponse](gobreaker.Settings{
-			Name:          "call embedding service",
-			MaxRequests:   2,
-			Interval:      2 * time.Second,
-			Timeout:       0,
-			ReadyToTrip:   nil,
-			OnStateChange: nil,
-			IsSuccessful:  nil,
-		})
-		embeddingResp, err := breaker.Execute(func() (*EmbeddingResponse, error) {
-			embeddingResp := new(EmbeddingResponse)
-			embeddingPayload := map[string]string{
-				"text": chunk,
-			}
-			resp, err := resty.New().R().
-				SetHeader("Content-Type", "application/x-www-form-urlencoded").
-				SetFormData(embeddingPayload).
-				SetResult(&embeddingResp).
-				Post("http://10.2.1.179:8001/embed")
-			if err != nil {
-				return nil, err
-			}
-
-			if resp.StatusCode() >= 500 {
-				return nil, fmt.Errorf("%d", resp.StatusCode())
-			}
-			return embeddingResp, nil
-		})
+		embeddingAttempt := 0
+		embeddingResp := new(EmbeddingResponse)
+		embeddingPayload := map[string]string{
+			"text": chunk,
+		}
+	embeddingAttempt:
+		embeddingAttempt++
+		resp, err := resty.New().R().
+			SetHeader("Content-Type", "application/x-www-form-urlencoded").
+			SetFormData(embeddingPayload).
+			SetResult(&embeddingResp).
+			Post("http://10.2.1.179:8001/embed")
 		if err != nil {
+			if embeddingAttempt < 3 {
+				time.Sleep(2 * time.Second)
+				goto embeddingAttempt
+			}
 			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
 				Id:           task.Id,
 				FailedReason: gut.Ptr(fmt.Sprintf("embedding error: %v", err)),
+				Title:        title,
+				Content:      content,
+				TokenCount:   &tokenResp.TokenCount,
+			}); err != nil {
+				gut.Fatal("failed to update task as failed", err)
+			}
+			return
+		}
+
+		// * handle server error
+		if resp.StatusCode() >= 400 {
+			if embeddingAttempt < 3 {
+				time.Sleep(2 * time.Second)
+				goto embeddingAttempt
+			}
+			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
+				Id:           task.Id,
+				FailedReason: gut.Ptr(fmt.Sprintf("embedding error %d", resp.StatusCode())),
 				Title:        title,
 				Content:      content,
 				TokenCount:   &tokenResp.TokenCount,
@@ -339,6 +369,33 @@ func (r *Worker) process() {
 
 		// * check if duplicate found
 		if len(searchResp.Result) > 0 {
+			// * rollback qdrant upsert
+			if _, err := r.qdrantClient.Delete(context.Background(), &qd.DeletePoints{
+				CollectionName: *r.config.QdrantCollection,
+				Points: &qd.PointsSelector{
+					PointsSelectorOneOf: &qd.PointsSelector_Filter{
+						Filter: &qd.Filter{
+							Must: []*qd.Condition{
+								{
+									ConditionOneOf: &qd.Condition_Field{
+										Field: &qd.FieldCondition{
+											Key: "taskId",
+											Match: &qd.Match{
+												MatchValue: &qd.Match_Keyword{
+													Keyword: strconv.FormatUint(*task.Id, 10),
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}); err != nil {
+				gut.Fatal("failed to rollback qdrant upsert", err)
+			}
+
 			duplicateTaskId, err := strconv.ParseUint(searchResp.Result[0].Payload["taskId"].GetStringValue(), 10, 64)
 			if err != nil {
 				gut.Fatal("failed to parse duplicate taskId", err)
@@ -359,7 +416,7 @@ func (r *Worker) process() {
 		// * generate uuid for point
 		pointId := uuid.New().String()
 
-		// * upsert point to qdrant with taskId and chunkNo payload
+		// * upsert point to qdrant
 		point := &qd.PointStruct{
 			Id: &qd.PointId{
 				PointIdOptions: &qd.PointId_Uuid{
@@ -381,7 +438,7 @@ func (r *Worker) process() {
 				},
 				"chunkNo": {
 					Kind: &qd.Value_IntegerValue{
-						IntegerValue: int64(i + 1),
+						IntegerValue: int64(i),
 					},
 				},
 				"type": {
@@ -402,11 +459,15 @@ func (r *Worker) process() {
 			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
 				Id:           task.Id,
 				FailedReason: gut.Ptr(fmt.Sprintf("qdrant upsert error: %v", err)),
+				Title:        title,
+				Content:      content,
+				TokenCount:   &tokenResp.TokenCount,
 			}); err != nil {
 				gut.Fatal("failed to update task as failed", err)
 			}
 			return
 		}
+		pointIds = append(pointIds, pointId)
 	}
 
 	// * update task as completed
