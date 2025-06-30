@@ -148,10 +148,6 @@ func (r *Worker) process() {
 			Post(endpoint)
 		if err != nil {
 			// * network error for extraction
-			if extractAttempt < 3 {
-				time.Sleep(2 * time.Second)
-				goto extractAttempt
-			}
 			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
 				Id:           task.Id,
 				FailedReason: gut.Ptr(fmt.Sprintf("extraction error: %v", err)),
@@ -167,7 +163,7 @@ func (r *Worker) process() {
 		// * handle server error with retry
 		if resp.StatusCode() >= 500 {
 			if extractAttempt < 3 {
-				time.Sleep(2 * time.Second)
+				time.Sleep(1 * time.Second)
 				goto extractAttempt
 			}
 			// * update task as failed with server error reason
@@ -185,6 +181,10 @@ func (r *Worker) process() {
 
 		// * handle client error (4xx should not be retried)
 		if resp.StatusCode() >= 400 {
+			if extractAttempt < 3 {
+				time.Sleep(1 * time.Second)
+				goto extractAttempt
+			}
 			// * update task as failed with error reason
 			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
 				Id:           task.Id,
@@ -196,6 +196,10 @@ func (r *Worker) process() {
 				gut.Fatal("failed to update task as failed", err)
 			}
 			return
+		}
+
+		if extractAttempt == 1 && len(extractResp.Text) < 512 {
+			goto extractAttempt
 		}
 
 		content = gut.Ptr(strings.ToValidUTF8(extractResp.Text, ""))
