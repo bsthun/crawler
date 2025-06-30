@@ -14,6 +14,18 @@ func (r *Handler) HandleStateOverview(c *fiber.Ctx) error {
 	// * login claims
 	l := c.Locals("l").(*jwt.Token).Claims.(*common.LoginClaims)
 
+	// * parse body
+	body := new(payload.OverviewRequest)
+	if err := c.BodyParser(body); err != nil {
+		return gut.Err(false, "invalid body", err)
+	}
+
+	// * validate userId
+	// TODO: Check for admin user override
+	if body.UserId != nil {
+		l.UserId = body.UserId
+	}
+	
 	// * get overview statistics
 	statsRows, err := r.database.P().TaskOverviewByUserId(c.Context(), l.UserId)
 	if err != nil {

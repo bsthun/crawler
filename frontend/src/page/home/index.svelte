@@ -3,7 +3,7 @@
 	import { backend } from '$/util/backend.ts'
 	import type { Writable } from 'svelte/store'
 	import type { Setup } from '$/util/type/setup'
-	import type { PayloadOverview } from '$/util/backend/backend'
+	import type { PayloadOverview, PayloadUserListResponse } from '$/util/backend/backend'
 	import * as Card from '$/lib/shadcn/components/ui/card'
 	import * as Chart from '$/lib/shadcn/components/ui/chart'
 	import { scaleBand } from 'd3-scale'
@@ -17,10 +17,29 @@
 	const setup = getContext<Writable<Setup>>('setup')
 	let overviewData = $state<PayloadOverview | null>(null)
 	let context = $state<ChartContextValue>()
+	let users = $state<PayloadUserListResponse | null>(null)
+	let selectedUserId = $state<string | null>(null)
+
+	const loadFilters = () => {
+		if ($setup?.profile?.isAdmin) {
+			backend.admin.userList()
+				.then((res) => {
+					if (res.success && res.data) {
+						users = res.data
+					}
+				})
+				.catch((err) => {
+					catcher(err)
+				})
+		}
+	}
 
 	const mount = () => {
+		const userId = $setup?.profile?.isAdmin ? selectedUserId : null
 		backend.state
-			.stateOverview()
+			.stateOverview({
+				userId: userId as any,
+			})
 			.then((res) => {
 				overviewData = res.data
 			})
@@ -29,7 +48,22 @@
 			})
 	}
 
-	onMount(mount)
+	$effect(() => {
+		if (selectedUserId === null && $setup?.profile?.userId) {
+			selectedUserId = $setup.profile.userId
+		}
+	})
+
+	$effect(() => {
+		if (selectedUserId !== undefined) {
+			mount()
+		}
+	})
+
+	onMount(() => {
+		loadFilters()
+		mount()
+	})
 
 	const chartConfig = {
 		completed: { label: 'Completed', color: '#A78BFA' },
@@ -47,8 +81,8 @@
 						class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-lg font-semibold text-white"
 					>
 						{$setup.profile.name?.charAt(0)?.toUpperCase() ||
-							$setup.profile.email?.charAt(0)?.toUpperCase() ||
-							'U'}
+						$setup.profile.email?.charAt(0)?.toUpperCase() ||
+						'U'}
 					</div>
 					<div class="flex-1">
 						<h2 class="text-xl font-semibold text-gray-900">{$setup.profile.name || 'User'}</h2>
@@ -58,6 +92,7 @@
 			</Card.Content>
 		</Card.Root>
 	{/if}
+
 
 	<Card.Root>
 		<Card.Header>
@@ -119,7 +154,21 @@
 					</Chart.Container>
 				</div>
 
-				<div class="flex-[2] space-y-4">
+				<div class="flex-[1] space-y-4">
+					{#if $setup?.profile?.isAdmin}
+						<div class="flex flex-col gap-2">
+							<label for="user-select" class="text-sm font-medium">View User</label>
+							<select id="user-select" bind:value={selectedUserId} class="rounded-md border px-3 py-2 w-full">
+								{#if users?.users}
+									{#each users.users as user}
+										<option value={user.id}>
+											{user.firstname} {user.lastname} ({user.email})
+										</option>
+									{/each}
+								{/if}
+							</select>
+						</div>
+					{/if}
 					<div class="grid grid-cols-3 gap-4">
 						<div class="text-center">
 							<div class="text-2xl font-bold text-purple-500">

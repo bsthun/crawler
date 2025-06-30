@@ -39,6 +39,10 @@ export interface PayloadOverviewHistoryItem {
   submitted: number;
 }
 
+export interface PayloadOverviewRequest {
+  userId: number;
+}
+
 export interface PayloadPoolTokenCategoryItem {
   categoryId: number;
   categoryName: string;
@@ -381,7 +385,7 @@ export namespace State {
   export namespace StateOverview {
     export type RequestParams = {};
     export type RequestQuery = {};
-    export type RequestBody = never;
+    export type RequestBody = PayloadOverviewRequest;
     export type RequestHeaders = {};
     export type ResponseBody = StateOverviewData;
   }
@@ -751,10 +755,12 @@ export class Backend<
      * @response `200` `StateOverviewData` OK
      * @response `400` `ResponseErrorResponse` Bad Request
      */
-    stateOverview: (params: RequestParams = {}) =>
+    stateOverview: (body: PayloadOverviewRequest, params: RequestParams = {}) =>
       this.request<StateOverviewData, StateOverviewError>({
         path: `/state/overview`,
         method: "POST",
+        body: body,
+        type: ContentType.Json,
         ...params,
       }),
   };

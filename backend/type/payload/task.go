@@ -41,6 +41,10 @@ type TaskListResponse struct {
 	Tasks []*TaskListItem `json:"tasks"`
 }
 
+type OverviewRequest struct {
+	UserId *uint64 `json:"userId"`
+}
+
 type OverviewHistoryItem struct {
 	Submitted *uint64 `json:"submitted"`
 	Pending   *uint64 `json:"pending"`

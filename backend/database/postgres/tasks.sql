@@ -17,10 +17,10 @@ FROM tasks
 WHERE user_id = $1
   AND (sqlc.narg('upload_id')::BIGINT IS NULL OR upload_id = sqlc.narg('upload_id')::BIGINT);
 
--- name: TaskGetByIdAndUserId :one
+-- name: TaskGetById :one
 SELECT *
 FROM tasks
-WHERE id = $1 AND user_id = $2;
+WHERE id = $1;
 
 -- name: TaskOverviewByUserId :many
 WITH token_stats AS (
