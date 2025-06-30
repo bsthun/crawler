@@ -13,6 +13,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
 	qd "github.com/qdrant/go-client/qdrant"
+	"github.com/sony/gobreaker/v2"
 	"github.com/tmc/langchaingo/textsplitter"
 	"go.uber.org/fx"
 	"strconv"
@@ -124,48 +125,50 @@ func (r *Worker) process() {
 		}
 
 		// * extraction service
-		extractResp := new(ExtractResponse)
-		errorResp := new(ErrorResponse)
-		resp, err := resty.New().R().
-			SetHeader("Content-Type", "application/json").
-			SetBody(payload).
-			SetResult(extractResp).
-			SetError(errorResp).
-			Post(endpoint)
+		breaker := gobreaker.NewCircuitBreaker[*ExtractResponse](gobreaker.Settings{
+			Name:          "call extraction service",
+			MaxRequests:   2,
+			Interval:      2 * time.Second,
+			Timeout:       0,
+			ReadyToTrip:   nil,
+			OnStateChange: nil,
+			IsSuccessful:  nil,
+		})
+		extractResp, err := breaker.Execute(func() (*ExtractResponse, error) {
+			extractResp := new(ExtractResponse)
+			errorResp := new(ErrorResponse)
+			resp, err := resty.New().R().
+				SetHeader("Content-Type", "application/json").
+				SetBody(payload).
+				SetResult(extractResp).
+				SetError(errorResp).
+				Post(endpoint)
+			if err != nil {
+				return nil, err
+			}
+
+			// * handle server error
+			if resp.StatusCode() >= 500 {
+				return nil, fmt.Errorf("%d (%s)", resp.StatusCode(), resp.Body())
+			}
+
+			// * handle client error
+			if resp.StatusCode() >= 400 {
+				var detail string
+				if errorResp.Error != "" {
+					detail = errorResp.Error
+				} else {
+					detail = string(resp.Body())
+				}
+				return nil, fmt.Errorf(detail)
+			}
+
+			return extractResp, nil
+		})
 		if err != nil {
 			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
 				Id:           task.Id,
-				FailedReason: gut.Ptr(fmt.Sprintf("extraction error: %v", err)),
-				Title:        nil,
-				Content:      nil,
-				TokenCount:   nil,
-			}); err != nil {
-				gut.Fatal("failed to update task as failed", err)
-			}
-			return
-		}
-
-		// * handle server error
-		if resp.StatusCode() >= 500 {
-			// * update task as failed with server error reason
-			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
-				Id:           task.Id,
-				FailedReason: gut.Ptr(fmt.Sprintf("extraction %d (%s)", resp.StatusCode(), resp.Body())),
-				Title:        nil,
-				Content:      nil,
-				TokenCount:   nil,
-			}); err != nil {
-				gut.Fatal("failed to update task as failed", err)
-			}
-			return
-		}
-
-		// * handle client error
-		if resp.StatusCode() >= 400 {
-			// * update task as failed with error reason
-			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
-				Id:           task.Id,
-				FailedReason: gut.Ptr(fmt.Sprintf("extraction: %s", errorResp.Error)),
+				FailedReason: gut.Ptr(fmt.Sprintf("extraction: %v", err)),
 				Title:        nil,
 				Content:      nil,
 				TokenCount:   nil,
@@ -213,7 +216,7 @@ func (r *Worker) process() {
 
 	// * split content to chunks
 	splitter := textsplitter.NewMarkdownTextSplitter(
-		textsplitter.WithChunkSize(65536),
+		textsplitter.WithChunkSize(262144),
 		textsplitter.WithChunkOverlap(64),
 		textsplitter.WithSeparators([]string{
 			"\n\n", // * paragraphs first
@@ -236,18 +239,36 @@ func (r *Worker) process() {
 		return
 	}
 
-	for _, chunk := range chunks {
+	for i, chunk := range chunks {
 		// * get embedding
-		embeddingResp := new(EmbeddingResponse)
-		embeddingPayload := map[string]string{
-			"text": chunk,
-		}
+		breaker := gobreaker.NewCircuitBreaker[*EmbeddingResponse](gobreaker.Settings{
+			Name:          "call embedding service",
+			MaxRequests:   2,
+			Interval:      2 * time.Second,
+			Timeout:       0,
+			ReadyToTrip:   nil,
+			OnStateChange: nil,
+			IsSuccessful:  nil,
+		})
+		embeddingResp, err := breaker.Execute(func() (*EmbeddingResponse, error) {
+			embeddingResp := new(EmbeddingResponse)
+			embeddingPayload := map[string]string{
+				"text": chunk,
+			}
+			resp, err := resty.New().R().
+				SetHeader("Content-Type", "application/x-www-form-urlencoded").
+				SetFormData(embeddingPayload).
+				SetResult(&embeddingResp).
+				Post("http://10.2.1.179:8001/embed")
+			if err != nil {
+				return nil, err
+			}
 
-		_, err = resty.New().R().
-			SetHeader("Content-Type", "application/x-www-form-urlencoded").
-			SetFormData(embeddingPayload).
-			SetResult(&embeddingResp).
-			Post("http://10.2.1.179:8001/embed")
+			if resp.StatusCode() >= 500 {
+				return nil, fmt.Errorf("%d", resp.StatusCode())
+			}
+			return embeddingResp, nil
+		})
 		if err != nil {
 			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
 				Id:           task.Id,
@@ -261,12 +282,12 @@ func (r *Worker) process() {
 			return
 		}
 
-		// * search in qdrant for similar content within same task type
+		// * search in qdrant for similarity
 		searchResp, err := r.qdrantClient.GetPointsClient().Search(context.Background(), &qd.SearchPoints{
 			CollectionName: *r.config.QdrantCollection,
 			Vector:         embeddingResp.Embeddings,
 			Limit:          uint64(1),
-			ScoreThreshold: gut.Ptr(float32(0.99995)),
+			ScoreThreshold: gut.Ptr(float32(0.999999)),
 			WithPayload: &qd.WithPayloadSelector{
 				SelectorOptions: &qd.WithPayloadSelector_Enable{
 					Enable: true,
@@ -325,7 +346,7 @@ func (r *Worker) process() {
 
 			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
 				Id:           task.Id,
-				FailedReason: gut.Ptr(fmt.Sprintf("duplicate #%s %.5f%%", gut.EncodeId(duplicateTaskId), searchResp.Result[0].Score*100)),
+				FailedReason: gut.Ptr(fmt.Sprintf("duplicate #%s", gut.EncodeId(duplicateTaskId))),
 				Title:        title,
 				Content:      content,
 				TokenCount:   &tokenResp.TokenCount,
@@ -356,6 +377,11 @@ func (r *Worker) process() {
 				"taskId": {
 					Kind: &qd.Value_StringValue{
 						StringValue: strconv.FormatUint(*task.Id, 10),
+					},
+				},
+				"chunkNo": {
+					Kind: &qd.Value_IntegerValue{
+						IntegerValue: int64(i + 1),
 					},
 				},
 				"type": {
