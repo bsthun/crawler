@@ -1,7 +1,6 @@
 package taskEndpoint
 
 import (
-	"backend/generate/psql"
 	"backend/type/common"
 	"backend/type/payload"
 	"backend/type/response"
@@ -13,6 +12,7 @@ import (
 func (r *Handler) HandleTaskDetail(c *fiber.Ctx) error {
 	// * login claims
 	l := c.Locals("l").(*jwt.Token).Claims.(*common.LoginClaims)
+	_ = l
 
 	// * parse body
 	body := new(payload.TaskDetailRequest)
@@ -21,10 +21,7 @@ func (r *Handler) HandleTaskDetail(c *fiber.Ctx) error {
 	}
 
 	// * get task by id and validate ownership
-	task, err := r.database.P().TaskGetByIdAndUserId(c.Context(), &psql.TaskGetByIdAndUserIdParams{
-		Id:     body.TaskId,
-		UserId: l.UserId,
-	})
+	task, err := r.database.P().TaskGetById(c.Context(), body.TaskId)
 	if err != nil {
 		return gut.Err(false, "task not found or not owned by user", err)
 	}
