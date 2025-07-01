@@ -287,8 +287,8 @@ func (r *Worker) process() {
 	}
 
 	// * split content to chunks
-	splitter := textsplitter.NewMarkdownTextSplitter(
-		textsplitter.WithChunkSize(262144),
+	splitter := textsplitter.NewRecursiveCharacter(
+		textsplitter.WithChunkSize(65535),
 		textsplitter.WithChunkOverlap(64),
 		textsplitter.WithSeparators([]string{
 			"\n\n", // * paragraphs first
@@ -298,7 +298,6 @@ func (r *Worker) process() {
 			" ",    // * then spaces
 			"",     // * then chars
 		}),
-		textsplitter.WithJoinTableRows(true),
 	)
 
 	chunks, err := splitter.SplitText(*content)

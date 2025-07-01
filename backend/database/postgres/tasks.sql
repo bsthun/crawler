@@ -103,3 +103,9 @@ SET status = 'queuing',
     token_count = 0
 WHERE status = 'failed'
 RETURNING *;
+
+-- name: TaskListCompleted :many
+SELECT *
+FROM tasks
+WHERE status = 'completed'
+ORDER BY created_at;
