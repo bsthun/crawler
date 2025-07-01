@@ -18,6 +18,7 @@ import (
 	"go.uber.org/fx"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -38,6 +39,15 @@ type TokenResponse struct {
 
 type EmbeddingResponse struct {
 	Embeddings []float32 `json:"embeddings"`
+}
+
+type Stat struct {
+	StartedAt           *time.Time       `json:"startedAt"`
+	FinishedAt          *time.Time       `json:"finishedAt"`
+	ExtractDurations    []*time.Duration `json:"extractDurations"`
+	TokenCountDurations []*time.Duration `json:"tokenCountDurations"`
+	EmbeddingDurations  []*time.Duration `json:"embeddingDurations"`
+	ChunkCount          int              `json:"chunkCount"`
 }
 
 type Worker struct {
@@ -107,6 +117,17 @@ func (r *Worker) process() {
 		return
 	}
 
+	// * construct stat
+	stat := &Stat{
+		StartedAt:           gut.Ptr(time.Now()),
+		FinishedAt:          nil,
+		ExtractDurations:    nil,
+		TokenCountDurations: nil,
+		EmbeddingDurations:  nil,
+		ChunkCount:          0,
+	}
+	_ = stat
+
 	// * construct text
 	title := new(string)
 	content := task.Content
@@ -170,7 +191,7 @@ func (r *Worker) process() {
 		// * handle server error with retry
 		if resp.StatusCode() >= 500 {
 			if extractAttempt < 3 {
-				time.Sleep(1 * time.Second)
+				time.Sleep(3 * time.Second)
 				goto extractAttempt
 			}
 			// * update task as failed with server error reason
@@ -189,7 +210,7 @@ func (r *Worker) process() {
 		// * handle client error (4xx should not be retried)
 		if resp.StatusCode() >= 400 {
 			if extractAttempt < 5 {
-				time.Sleep(1 * time.Second)
+				time.Sleep(3 * time.Second)
 				goto extractAttempt
 			}
 			// * update task as failed with error reason
@@ -289,179 +310,205 @@ func (r *Worker) process() {
 
 	duplicateCount := 0
 	duplicateTaskIds := make([]string, 0)
+	chunkWg := new(sync.WaitGroup)
+	chunkMutex := new(sync.Mutex)
+	failed := false
 	for i, chunk := range chunks {
-		// * get embedding
-		embeddingAttempt := 0
-		embeddingResp := new(EmbeddingResponse)
-		embeddingPayload := map[string]string{
-			"text": chunk,
-		}
-	embeddingAttempt:
-		embeddingAttempt++
-		resp, err := resty.New().R().
-			SetHeader("Content-Type", "application/x-www-form-urlencoded").
-			SetFormData(embeddingPayload).
-			SetResult(&embeddingResp).
-			Post(*r.config.EndpointEmbedding)
-		if err != nil {
-			if embeddingAttempt < 3 {
-				time.Sleep(2 * time.Second)
-				goto embeddingAttempt
-			}
-			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
-				Id:           task.Id,
-				FailedReason: gut.Ptr(fmt.Sprintf("embedding error: %v", err)),
-				Title:        title,
-				Content:      content,
-				TokenCount:   &tokenResp.TokenCount,
-			}); err != nil {
-				gut.Fatal("failed to update task as failed", err)
-			}
-			return
-		}
+		chunkWg.Add(1)
+		time.Sleep(100 * time.Millisecond)
+		go func(i int, chunk string) {
+			defer chunkWg.Done()
 
-		// * handle server error
-		if resp.StatusCode() >= 400 {
-			if embeddingAttempt < 3 {
-				time.Sleep(2 * time.Second)
-				goto embeddingAttempt
+			// * get embedding
+			embeddingAttempt := 0
+			embeddingResp := new(EmbeddingResponse)
+			embeddingPayload := map[string]string{
+				"text": chunk,
 			}
-			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
-				Id:           task.Id,
-				FailedReason: gut.Ptr(fmt.Sprintf("embedding error %d", resp.StatusCode())),
-				Title:        title,
-				Content:      content,
-				TokenCount:   &tokenResp.TokenCount,
-			}); err != nil {
-				gut.Fatal("failed to update task as failed", err)
-			}
-			return
-		}
-
-		// * search in qdrant for similarity
-		searchResp, err := r.qdrantClient.GetPointsClient().Search(context.Background(), &qd.SearchPoints{
-			CollectionName: *r.config.QdrantCollection,
-			Vector:         embeddingResp.Embeddings,
-			Limit:          uint64(1),
-			ScoreThreshold: gut.Ptr(float32(1)),
-			WithPayload: &qd.WithPayloadSelector{
-				SelectorOptions: &qd.WithPayloadSelector_Enable{
-					Enable: true,
-				},
-			},
-			Filter: &qd.Filter{
-				Must: []*qd.Condition{
-					{
-						ConditionOneOf: &qd.Condition_Field{
-							Field: &qd.FieldCondition{
-								Key: "type",
-								Match: &qd.Match{
-									MatchValue: &qd.Match_Keyword{
-										Keyword: *task.Type,
-									},
-								},
-							},
-						},
-					},
-				},
-				MustNot: []*qd.Condition{
-					{
-						ConditionOneOf: &qd.Condition_Field{
-							Field: &qd.FieldCondition{
-								Key: "taskId",
-								Match: &qd.Match{
-									MatchValue: &qd.Match_Keyword{
-										Keyword: strconv.FormatUint(*task.Id, 10),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		})
-		if err != nil {
-			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
-				Id:           task.Id,
-				FailedReason: gut.Ptr(fmt.Sprintf("qdrant search error: %v", err)),
-				Title:        title,
-				Content:      content,
-				TokenCount:   &tokenResp.TokenCount,
-			}); err != nil {
-				gut.Fatal("failed to update task as failed", err)
-			}
-			return
-		}
-
-		// * check if duplicate found
-		if len(searchResp.Result) > 0 {
-			// * extract duplicate taskId
-			duplicateTaskId, err := strconv.ParseUint(searchResp.Result[0].Payload["taskId"].GetStringValue(), 10, 64)
+		embeddingAttempt:
+			embeddingAttempt++
+			resp, err := resty.New().R().
+				SetHeader("Content-Type", "application/x-www-form-urlencoded").
+				SetFormData(embeddingPayload).
+				SetResult(&embeddingResp).
+				Post(*r.config.EndpointEmbedding)
 			if err != nil {
-				gut.Fatal("failed to parse duplicate taskId", err)
+				if embeddingAttempt < 3 {
+					time.Sleep(2 * time.Second)
+					goto embeddingAttempt
+				}
+				if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
+					Id:           task.Id,
+					FailedReason: gut.Ptr(fmt.Sprintf("embedding error: %v", err)),
+					Title:        title,
+					Content:      content,
+					TokenCount:   &tokenResp.TokenCount,
+				}); err != nil {
+					gut.Fatal("failed to update task as failed", err)
+				}
+				chunkMutex.Lock()
+				defer chunkMutex.Unlock()
+				failed = true
+				return
 			}
 
-			duplicateCount++
-			duplicateTaskIds = append(duplicateTaskIds, fmt.Sprintf("#%s", gut.EncodeId(duplicateTaskId)))
-		}
-
-		// * generate uuid for point
-		pointId := uuid.New().String()
-
-		// * upsert point to qdrant
-		point := &qd.PointStruct{
-			Id: &qd.PointId{
-				PointIdOptions: &qd.PointId_Uuid{
-					Uuid: pointId,
-				},
-			},
-			Vectors: &qd.Vectors{
-				VectorsOptions: &qd.Vectors_Vector{
-					Vector: &qd.Vector{
-						Data: embeddingResp.Embeddings,
-					},
-				},
-			},
-			Payload: map[string]*qd.Value{
-				"taskId": {
-					Kind: &qd.Value_StringValue{
-						StringValue: strconv.FormatUint(*task.Id, 10),
-					},
-				},
-				"chunkNo": {
-					Kind: &qd.Value_IntegerValue{
-						IntegerValue: int64(i),
-					},
-				},
-				"type": {
-					Kind: &qd.Value_StringValue{
-						StringValue: *task.Type,
-					},
-				},
-			},
-		}
-
-		_, err = r.qdrantClient.Upsert(context.Background(), &qd.UpsertPoints{
-			CollectionName: *r.config.QdrantCollection,
-			Points: []*qd.PointStruct{
-				point,
-			},
-		})
-		if err != nil {
-			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
-				Id:           task.Id,
-				FailedReason: gut.Ptr(fmt.Sprintf("qdrant upsert error: %v", err)),
-				Title:        title,
-				Content:      content,
-				TokenCount:   &tokenResp.TokenCount,
-			}); err != nil {
-				gut.Fatal("failed to update task as failed", err)
+			// * handle server error
+			if resp.StatusCode() >= 400 {
+				if embeddingAttempt < 3 {
+					time.Sleep(2 * time.Second)
+					goto embeddingAttempt
+				}
+				if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
+					Id:           task.Id,
+					FailedReason: gut.Ptr(fmt.Sprintf("embedding error %d", resp.StatusCode())),
+					Title:        title,
+					Content:      content,
+					TokenCount:   &tokenResp.TokenCount,
+				}); err != nil {
+					gut.Fatal("failed to update task as failed", err)
+				}
+				chunkMutex.Lock()
+				defer chunkMutex.Unlock()
+				failed = true
+				return
 			}
-			return
-		}
+
+			// * search in qdrant for similarity
+			searchResp, err := r.qdrantClient.GetPointsClient().Search(context.Background(), &qd.SearchPoints{
+				CollectionName: *r.config.QdrantCollection,
+				Vector:         embeddingResp.Embeddings,
+				Limit:          uint64(1),
+				ScoreThreshold: gut.Ptr(float32(1)),
+				WithPayload: &qd.WithPayloadSelector{
+					SelectorOptions: &qd.WithPayloadSelector_Enable{
+						Enable: true,
+					},
+				},
+				Filter: &qd.Filter{
+					Must: []*qd.Condition{
+						{
+							ConditionOneOf: &qd.Condition_Field{
+								Field: &qd.FieldCondition{
+									Key: "type",
+									Match: &qd.Match{
+										MatchValue: &qd.Match_Keyword{
+											Keyword: *task.Type,
+										},
+									},
+								},
+							},
+						},
+					},
+					MustNot: []*qd.Condition{
+						{
+							ConditionOneOf: &qd.Condition_Field{
+								Field: &qd.FieldCondition{
+									Key: "taskId",
+									Match: &qd.Match{
+										MatchValue: &qd.Match_Keyword{
+											Keyword: strconv.FormatUint(*task.Id, 10),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			})
+			if err != nil {
+				if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
+					Id:           task.Id,
+					FailedReason: gut.Ptr(fmt.Sprintf("qdrant search error: %v", err)),
+					Title:        title,
+					Content:      content,
+					TokenCount:   &tokenResp.TokenCount,
+				}); err != nil {
+					gut.Fatal("failed to update task as failed", err)
+				}
+				chunkMutex.Lock()
+				defer chunkMutex.Unlock()
+				failed = true
+				return
+			}
+
+			// * check if duplicate found
+			if len(searchResp.Result) > 0 {
+				// * extract duplicate taskId
+				duplicateTaskId, err := strconv.ParseUint(searchResp.Result[0].Payload["taskId"].GetStringValue(), 10, 64)
+				if err != nil {
+					gut.Fatal("failed to parse duplicate taskId", err)
+				}
+
+				chunkMutex.Lock()
+				defer chunkMutex.Unlock()
+				duplicateCount++
+				duplicateTaskIds = append(duplicateTaskIds, fmt.Sprintf("#%s", gut.EncodeId(duplicateTaskId)))
+			}
+
+			// * generate uuid for point
+			pointId := uuid.New().String()
+
+			// * upsert point to qdrant
+			point := &qd.PointStruct{
+				Id: &qd.PointId{
+					PointIdOptions: &qd.PointId_Uuid{
+						Uuid: pointId,
+					},
+				},
+				Vectors: &qd.Vectors{
+					VectorsOptions: &qd.Vectors_Vector{
+						Vector: &qd.Vector{
+							Data: embeddingResp.Embeddings,
+						},
+					},
+				},
+				Payload: map[string]*qd.Value{
+					"taskId": {
+						Kind: &qd.Value_StringValue{
+							StringValue: strconv.FormatUint(*task.Id, 10),
+						},
+					},
+					"chunkNo": {
+						Kind: &qd.Value_IntegerValue{
+							IntegerValue: int64(i),
+						},
+					},
+					"type": {
+						Kind: &qd.Value_StringValue{
+							StringValue: *task.Type,
+						},
+					},
+				},
+			}
+
+			_, err = r.qdrantClient.Upsert(context.Background(), &qd.UpsertPoints{
+				CollectionName: *r.config.QdrantCollection,
+				Points: []*qd.PointStruct{
+					point,
+				},
+			})
+			if err != nil {
+				if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
+					Id:           task.Id,
+					FailedReason: gut.Ptr(fmt.Sprintf("qdrant upsert error: %v", err)),
+					Title:        title,
+					Content:      content,
+					TokenCount:   &tokenResp.TokenCount,
+				}); err != nil {
+					gut.Fatal("failed to update task as failed", err)
+				}
+				chunkMutex.Lock()
+				defer chunkMutex.Unlock()
+				failed = true
+				return
+			}
+		}(i, chunk)
 	}
 
-	if duplicateCount > len(chunks)*2/3 {
+	chunkWg.Wait()
+
+	duplicate := duplicateCount > len(chunks)*2/3
+	if failed || duplicate {
 		// * rollback qdrant upsert
 		if _, err := r.qdrantClient.Delete(context.Background(), &qd.DeletePoints{
 			CollectionName: *r.config.QdrantCollection,
@@ -489,14 +536,16 @@ func (r *Worker) process() {
 			gut.Fatal("failed to rollback qdrant upsert", err)
 		}
 
-		if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
-			Id:           task.Id,
-			FailedReason: gut.Ptr(fmt.Sprintf("duplicate %s", strings.Join(duplicateTaskIds, ", "))),
-			Title:        title,
-			Content:      content,
-			TokenCount:   &tokenResp.TokenCount,
-		}); err != nil {
-			gut.Fatal("failed to update task as failed", err)
+		if duplicate {
+			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
+				Id:           task.Id,
+				FailedReason: gut.Ptr(fmt.Sprintf("duplicate %s", strings.Join(duplicateTaskIds, ", "))),
+				Title:        title,
+				Content:      content,
+				TokenCount:   &tokenResp.TokenCount,
+			}); err != nil {
+				gut.Fatal("failed to update task as failed", err)
+			}
 		}
 		return
 	}

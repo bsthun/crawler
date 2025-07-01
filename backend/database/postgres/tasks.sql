@@ -70,14 +70,13 @@ WHERE id = (
     WHERE t.status = 'queuing'
       AND t.user_id = (
         SELECT user_id
-        FROM tasks
-        WHERE status = 'queuing'
+        FROM (SELECT DISTINCT user_id FROM tasks WHERE status = 'queuing') users
         ORDER BY RANDOM()
         LIMIT 1
     )
     ORDER BY t.created_at
     LIMIT 1
-        FOR UPDATE SKIP LOCKED
+    FOR UPDATE SKIP LOCKED
 )
 RETURNING *;
 
