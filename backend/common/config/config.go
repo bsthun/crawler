@@ -2,7 +2,6 @@ package config
 
 import (
 	"backend/type/enum"
-	"flag"
 	"github.com/bsthun/gut"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -24,6 +23,8 @@ type Config struct {
 	OauthClientId          *string           `yaml:"oauthClientId" validate:"required"`
 	OauthClientSecret      *string           `yaml:"oauthClientSecret" validate:"required"`
 	OauthEndpoint          *string           `yaml:"oauthEndpoint" validate:"required"`
+	EndpointEmbedding      *string           `yaml:"endpointEmbedding" validate:"required"`
+	EndpointTokenCount     *string           `yaml:"endpointTokenCount" validate:"required"`
 	EndpointWebExtract     *string           `yaml:"endpointWebExtract" validate:"required"`
 	EndpointDocExtract     *string           `yaml:"endpointDocExtract" validate:"required"`
 	EndpointYoutubeExtract *string           `yaml:"endpointYoutubeExtract" validate:"required"`
@@ -31,14 +32,16 @@ type Config struct {
 
 func Init() *Config {
 	// * Parse arguments
-	path := flag.String("config", "config.yml", "Path to config file")
-	flag.Parse()
+	path := os.Getenv("BACKEND_CONFIG_PATH")
+	if path == "" {
+		path = "config.yml"
+	}
 
 	// * Declare struct
 	config := new(Config)
 
 	// * Read config
-	yml, err := os.ReadFile(*path)
+	yml, err := os.ReadFile(path)
 	if err != nil {
 		gut.Fatal("Unable to read configuration file", err)
 	}
