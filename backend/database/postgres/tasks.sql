@@ -94,3 +94,13 @@ SET status = 'failed',
     content = COALESCE($4, content),
     token_count = COALESCE($5, token_count)
 WHERE id = $1;
+
+-- name: TaskResetFailed :many
+UPDATE tasks
+SET status = 'queuing',
+    failed_reason = NULL,
+    title = NULL,
+    content = NULL,
+    token_count = 0
+WHERE status = 'failed'
+RETURNING *;

@@ -214,12 +214,12 @@ func (r *Worker) process() {
 	}
 
 	// * call tokenization service
-	var tokenResp *TokenResponse
+	tokenResp := new(TokenResponse)
 	tokenPayload := map[string]string{
 		"text": *content,
 	}
 
-	_, err = resty.New().R().
+	resp, err := resty.New().R().
 		SetHeader("Content-Type", "application/x-www-form-urlencoded").
 		SetFormData(tokenPayload).
 		SetResult(&tokenResp).
@@ -229,6 +229,20 @@ func (r *Worker) process() {
 		if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
 			Id:           task.Id,
 			FailedReason: gut.Ptr(fmt.Sprintf("token error: %v", err)),
+			Title:        title,
+			Content:      content,
+			TokenCount:   nil,
+		}); err != nil {
+			gut.Fatal("failed to update task as failed", err)
+		}
+		return
+	}
+
+	// * handle server error
+	if resp.StatusCode() >= 500 {
+		if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
+			Id:           task.Id,
+			FailedReason: gut.Ptr(fmt.Sprintf("tokenization %d (%s)", resp.StatusCode(), resp.Body())),
 			Title:        title,
 			Content:      content,
 			TokenCount:   nil,
@@ -321,7 +335,7 @@ func (r *Worker) process() {
 			CollectionName: *r.config.QdrantCollection,
 			Vector:         embeddingResp.Embeddings,
 			Limit:          uint64(1),
-			ScoreThreshold: gut.Ptr(float32(0.999999)),
+			ScoreThreshold: gut.Ptr(float32(1.0)),
 			WithPayload: &qd.WithPayloadSelector{
 				SelectorOptions: &qd.WithPayloadSelector_Enable{
 					Enable: true,
