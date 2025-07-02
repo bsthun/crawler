@@ -18,6 +18,7 @@ import (
 	qd "github.com/qdrant/go-client/qdrant"
 	"github.com/tmc/langchaingo/textsplitter"
 	"go.uber.org/fx"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -31,7 +32,11 @@ type ExtractResponse struct {
 }
 
 type ErrorResponse struct {
-	Error string `json:"detail"`
+	Detail *ErrorResponseDetail `json:"detail"`
+}
+
+type ErrorResponseDetail struct {
+	Error string `json:"error"`
 }
 
 type TokenResponse struct {
@@ -56,6 +61,7 @@ type Worker struct {
 	database     common.Database
 	qdrantClient *qd.Client
 	ollamaClient *api.Client
+	ExtractPool  *Pool[*string]
 }
 
 func main() {
@@ -88,6 +94,7 @@ func invoke(
 		database:     db,
 		qdrantClient: qdrantClient,
 		ollamaClient: ollamaClient,
+		ExtractPool:  NewPool(config.EndpointExtracts),
 	}
 
 	// * Parse arguments
@@ -138,26 +145,27 @@ func (r *Worker) process() {
 	content := task.Content
 
 	if content == nil {
-		// * determine endpoint
-		var endpoint string
+		base := *r.ExtractPool.Get()
+		path := ""
+		defer r.ExtractPool.Put(&base)
+
 		switch *task.Type {
 		case "web":
-			endpoint = *r.config.EndpointWebExtract
+			path = *r.config.EndpointWebPath
 		case "doc":
-			endpoint = *r.config.EndpointDocExtract
+			path = *r.config.EndpointDocPath
+			return
 		case "youtube":
-			endpoint = *r.config.EndpointYoutubeExtract
+			path = *r.config.EndpointYoutubePath
 		default:
-			// * invalid task type, should mark as failed
-			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
-				Id:           task.Id,
-				FailedReason: gut.Ptr(fmt.Sprintf("invalid task type: %s", *task.Type)),
-				Title:        nil,
-				Content:      nil,
-				TokenCount:   nil,
-			}); err != nil {
-				gut.Fatal("failed to update task as failed", err)
-			}
+			gut.Fatal("unknown task type", fmt.Errorf("%s", *task.Type))
+			return
+		}
+
+		// * get endpoint from pool
+		endpoint, err := url.JoinPath(base, path)
+		if err != nil {
+			gut.Fatal("failed to join url path", err)
 			return
 		}
 
@@ -173,6 +181,7 @@ func (r *Worker) process() {
 
 	extractAttempt:
 		extractAttempt++
+		extractStart := time.Now()
 		resp, err := resty.New().R().
 			SetHeader("Content-Type", "application/json").
 			SetBody(payload).
@@ -196,6 +205,7 @@ func (r *Worker) process() {
 		// * handle server error with retry
 		if resp.StatusCode() >= 500 {
 			if extractAttempt < 3 {
+				stat.ExtractDurations = append(stat.ExtractDurations, gut.Ptr(time.Since(extractStart)))
 				time.Sleep(3 * time.Second)
 				goto extractAttempt
 			}
@@ -215,13 +225,22 @@ func (r *Worker) process() {
 		// * handle client error (4xx should not be retried)
 		if resp.StatusCode() >= 400 {
 			if extractAttempt < 3 {
+				stat.ExtractDurations = append(stat.ExtractDurations, gut.Ptr(time.Since(extractStart)))
 				time.Sleep(3 * time.Second)
 				goto extractAttempt
 			}
+
+			var message string
+			if errorResp.Detail != nil && errorResp.Detail.Error != "" {
+				message = fmt.Sprintf("extraction: %s", errorResp.Detail.Error)
+			} else {
+				message = fmt.Sprintf("extraction: %s", resp.Body())
+			}
+
 			// * update task as failed with error reason
 			if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
 				Id:           task.Id,
-				FailedReason: gut.Ptr(fmt.Sprintf("extraction: %s", errorResp.Error)),
+				FailedReason: &message,
 				Title:        nil,
 				Content:      nil,
 				TokenCount:   nil,
