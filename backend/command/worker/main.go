@@ -12,7 +12,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/bsthun/gut"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
 	"github.com/ollama/ollama/api"
@@ -351,7 +350,7 @@ func (r *Worker) process() {
 			CollectionName: *r.config.QdrantCollection,
 			Vector:         embeddingResp.Embeddings[0],
 			Limit:          uint64(1),
-			ScoreThreshold: gut.Ptr(float32(1)),
+			ScoreThreshold: gut.Ptr(float32(0.8)),
 			WithPayload: &qd.WithPayloadSelector{
 				SelectorOptions: &qd.WithPayloadSelector_Enable{
 					Enable: true,
@@ -410,7 +409,7 @@ func (r *Worker) process() {
 			}
 
 			duplicateCount++
-			duplicateTaskIds = append(duplicateTaskIds, fmt.Sprintf("#%s", gut.EncodeId(duplicateTaskId)))
+			duplicateTaskIds = append(duplicateTaskIds, fmt.Sprintf("#%d %.4f%%", duplicateTaskId, searchResp.Result[0].Score*100))
 		}
 
 		// * generate uuid for point
@@ -470,7 +469,6 @@ func (r *Worker) process() {
 	}
 
 	duplicate := duplicateCount > len(chunks)*2/3
-	spew.Dump(len(chunks))
 	if duplicate {
 		// * rollback qdrant upsert
 		if _, err := r.qdrantClient.Delete(context.Background(), &qd.DeletePoints{
