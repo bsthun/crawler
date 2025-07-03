@@ -8,8 +8,8 @@ import (
 )
 
 type Server interface {
-	TaskCreate(ctx context.Context, userId *uint64, uploadId *uint64, categoryName *string, taskType *string, source *string) (*psql.Task, *gut.ErrorInstance)
-	TaskRawCreate(ctx context.Context, userId *uint64, uploadId *uint64, categoryName *string, taskType *string, source *string, title *string, content *string) (*psql.Task, *gut.ErrorInstance)
+	TaskCreate(ctx context.Context, querier psql.PQuerier, userId *uint64, uploadId *uint64, categoryName *string, taskType *string, source *string) (*psql.Task, *gut.ErrorInstance)
+	TaskRawCreate(ctx context.Context, querier psql.PQuerier, userId *uint64, uploadId *uint64, categoryName *string, taskType *string, source *string, title *string, content *string) (*psql.Task, *gut.ErrorInstance)
 }
 
 type Service struct {

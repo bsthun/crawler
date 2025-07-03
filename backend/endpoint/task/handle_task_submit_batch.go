@@ -41,8 +41,16 @@ func (r *Handler) HandleTaskSubmitBatch(c *fiber.Ctx) error {
 		return gut.Err(false, "csv file is empty", nil)
 	}
 
+	// * begin transaction
+	tx, querier := r.database.Ptx(c.Context(), nil)
+	defer func() {
+		if r := recover(); r != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
 	// * create upload record
-	upload, err := r.database.P().UploadCreate(c.Context(), l.UserId)
+	upload, err := querier.UploadCreate(c.Context(), l.UserId)
 	if err != nil {
 		return gut.Err(false, "failed to create upload record", err)
 	}
@@ -80,9 +88,9 @@ func (r *Handler) HandleTaskSubmitBatch(c *fiber.Ctx) error {
 
 		// * check content
 		if content != "" {
-			task, er = r.taskProcedure.TaskRawCreate(c.Context(), l.UserId, upload.Id, &category, &taskType, &source, gut.Ptr(""), &content)
+			task, er = r.taskProcedure.TaskRawCreate(c.Context(), querier, l.UserId, upload.Id, &category, &taskType, &source, gut.Ptr(""), &content)
 		} else {
-			task, er = r.taskProcedure.TaskCreate(c.Context(), l.UserId, upload.Id, &category, &taskType, &source)
+			task, er = r.taskProcedure.TaskCreate(c.Context(), querier, l.UserId, upload.Id, &category, &taskType, &source)
 		}
 
 		if er != nil {
@@ -90,6 +98,11 @@ func (r *Handler) HandleTaskSubmitBatch(c *fiber.Ctx) error {
 		}
 
 		createdTasks = append(createdTasks, task)
+	}
+
+	// * commit transaction
+	if err := tx.Commit(); err != nil {
+		return gut.Err(false, "failed to commit transaction", err)
 	}
 
 	// * response

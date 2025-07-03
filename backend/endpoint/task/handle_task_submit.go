@@ -25,7 +25,7 @@ func (r *Handler) HandleTaskSubmit(c *fiber.Ctx) error {
 	}
 
 	// * create task
-	task, er := r.taskProcedure.TaskCreate(c.Context(), l.UserId, nil, body.Category, body.Type, body.Source)
+	task, er := r.taskProcedure.TaskCreate(c.Context(), r.database.P(), l.UserId, nil, body.Category, body.Type, body.Source)
 	if er != nil {
 		return er
 	}

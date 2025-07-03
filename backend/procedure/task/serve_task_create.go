@@ -6,15 +6,15 @@ import (
 	"github.com/bsthun/gut"
 )
 
-func (r *Service) TaskCreate(ctx context.Context, userId *uint64, uploadId *uint64, categoryName *string, taskType *string, source *string) (*psql.Task, *gut.ErrorInstance) {
+func (r *Service) TaskCreate(ctx context.Context, querier psql.PQuerier, userId *uint64, uploadId *uint64, categoryName *string, taskType *string, source *string) (*psql.Task, *gut.ErrorInstance) {
 	// * get category by name
-	category, err := r.database.P().CategoryGetByName(ctx, categoryName)
+	category, err := querier.CategoryGetByName(ctx, categoryName)
 	if err != nil {
 		return nil, gut.Err(false, "category not found", err)
 	}
 
 	// * create task
-	task, err := r.database.P().TaskCreateForUserId(ctx, &psql.TaskCreateForUserIdParams{
+	task, err := querier.TaskCreateForUserId(ctx, &psql.TaskCreateForUserIdParams{
 		UserId:     userId,
 		UploadId:   uploadId,
 		CategoryId: category.Id,
