@@ -32,11 +32,7 @@ type ExtractResponse struct {
 }
 
 type ErrorResponse struct {
-	Detail *ErrorResponseDetail `json:"detail"`
-}
-
-type ErrorResponseDetail struct {
-	Error string `json:"error"`
+	Detail any `json:"detail"`
 }
 
 type TokenResponse struct {
@@ -154,7 +150,6 @@ func (r *Worker) process() {
 			path = *r.config.EndpointWebPath
 		case "doc":
 			path = *r.config.EndpointDocPath
-			return
 		case "youtube":
 			path = *r.config.EndpointYoutubePath
 		default:
@@ -231,8 +226,14 @@ func (r *Worker) process() {
 			}
 
 			var message string
-			if errorResp.Detail != nil && errorResp.Detail.Error != "" {
-				message = fmt.Sprintf("extraction: %s", errorResp.Detail.Error)
+			if detail, ok := errorResp.Detail.(string); ok {
+				message = fmt.Sprintf("extraction: %s", detail)
+			} else if detail, ok := errorResp.Detail.(map[string]any); ok {
+				if msg, ok := detail["error"].(string); ok {
+					message = fmt.Sprintf("extraction: %s", msg)
+				} else {
+					message = fmt.Sprintf("extraction: %v", detail)
+				}
 			} else {
 				message = fmt.Sprintf("extraction: %s", resp.Body())
 			}
@@ -255,15 +256,15 @@ func (r *Worker) process() {
 		}
 
 		content = gut.Ptr(strings.ToValidUTF8(extractResp.Text, ""))
-		title = gut.Ptr(strings.ToValidUTF8(extractResp.Title, ""))
 	} else {
-		length := 100
-		if len(*content) < length {
-			length = len(*content)
-		}
 		content = gut.Ptr(strings.ToValidUTF8(*content, ""))
-		title = gut.Ptr((*content)[:length])
 	}
+	length := 100
+	if len(*content) < length {
+		length = len(*content)
+	}
+	runes := []rune(*content)
+	title = gut.Ptr(string(runes[:length]))
 
 	// * call tokenization service
 	tokenResp := new(TokenResponse)
@@ -369,7 +370,7 @@ func (r *Worker) process() {
 			CollectionName: *r.config.QdrantCollection,
 			Vector:         embeddingResp.Embeddings[0],
 			Limit:          uint64(1),
-			ScoreThreshold: gut.Ptr(float32(0.8)),
+			ScoreThreshold: gut.Ptr(float32(0.90)),
 			WithPayload: &qd.WithPayloadSelector{
 				SelectorOptions: &qd.WithPayloadSelector_Enable{
 					Enable: true,
