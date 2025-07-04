@@ -260,11 +260,12 @@ func (r *Worker) process() {
 		content = gut.Ptr(strings.ToValidUTF8(*content, ""))
 	}
 	length := 100
-	if len(*content) < length {
-		length = len(*content)
+	contentLen := len([]rune(*content))
+	if contentLen < length {
+		length = contentLen
 	}
 	runes := []rune(*content)
-	title = gut.Ptr(string(runes[:length]))
+	title = gut.Ptr(string(runes[:contentLen]))
 
 	// * call tokenization service
 	tokenResp := new(TokenResponse)
