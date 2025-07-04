@@ -28,11 +28,11 @@ func PrintQueryInfo(query string, args ...any) {
 	// * resolve and format arguments
 	resolvedArgs := make([]string, 0, len(args))
 	for _, arg := range args {
-		resolvedArg := fmt.Sprintf("%v", resolveArg(arg))
+		resolvedArg := []rune(fmt.Sprintf("%v", resolveArg(arg)))
 		if len(resolvedArg) > 64 {
-			resolvedArg = resolvedArg[:64] + "..."
+			resolvedArg = append(resolvedArg[:64], []rune("...")...)
 		}
-		resolvedArgs = append(resolvedArgs, resolvedArg)
+		resolvedArgs = append(resolvedArgs, string(resolvedArg))
 	}
 
 	// * format the output string
