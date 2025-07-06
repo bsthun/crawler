@@ -261,8 +261,8 @@ func (r *Worker) process() {
 	}
 	length := 100
 	contentLen := len([]rune(*content))
-	if contentLen < length {
-		length = contentLen
+	if contentLen > length {
+		contentLen = length
 	}
 	runes := []rune(*content)
 	title = gut.Ptr(string(runes[:contentLen]))
