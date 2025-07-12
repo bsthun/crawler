@@ -76,6 +76,7 @@ export interface PayloadTaskDetailRequest {
 }
 
 export interface PayloadTaskDetailResponse {
+  category: PayloadTaskCategoryItem;
   categoryId: number;
   content: string;
   createdAt: string;
@@ -89,6 +90,7 @@ export interface PayloadTaskDetailResponse {
   type: string;
   updatedAt: string;
   uploadId: number;
+  user: PayloadUserListItem;
   userId: number;
 }
 

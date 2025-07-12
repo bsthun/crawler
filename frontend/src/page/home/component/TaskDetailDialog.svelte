@@ -164,6 +164,20 @@
 							</td>
 						</tr>
 					{/if}
+					{#if taskDetail.user}
+						<tr class="border-b">
+							<td class="py-2 pr-4 font-medium">User</td>
+							<td class="py-2 truncate">
+								{taskDetail.user.firstname} {taskDetail.user.lastname} ({taskDetail.user.email})
+							</td>
+						</tr>
+					{/if}
+					{#if taskDetail.category}
+						<tr class="border-b">
+							<td class="py-2 pr-4 font-medium">Category</td>
+							<td class="py-2 truncate">{taskDetail.category.name}</td>
+						</tr>
+					{/if}
 					<tr class="border-b">
 						<td class="py-2 pr-4 font-medium">Created</td>
 						<td class="py-2 truncate">
