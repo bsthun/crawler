@@ -53,9 +53,12 @@ type OverviewHistoryItem struct {
 }
 
 type Overview struct {
-	TokenCount *int32                   `json:"tokenCount"`
-	Histories  []*OverviewHistoryItem   `json:"histories"`
-	PoolTokens []*PoolTokenCategoryItem `json:"poolTokens"`
+	TokenCount     *int32                   `json:"tokenCount"`
+	TotalCompleted *uint64                  `json:"totalCompleted"`
+	TotalFailed    *uint64                  `json:"totalFailed"`
+	TotalPending   *uint64                  `json:"totalPending"`
+	Histories      []*OverviewHistoryItem   `json:"histories"`
+	PoolTokens     []*PoolTokenCategoryItem `json:"poolTokens"`
 }
 
 type PoolTokenCategoryItem struct {

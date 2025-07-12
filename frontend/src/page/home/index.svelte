@@ -172,19 +172,19 @@
 					<div class="grid grid-cols-3 gap-4">
 						<div class="text-center">
 							<div class="text-2xl font-bold text-purple-500">
-								{overviewData?.histories?.reduce((sum, history) => sum + history.completed, 0) || 0}
+								{overviewData?.totalCompleted || 0}
 							</div>
 							<div class="text-sm text-gray-500">Completed</div>
 						</div>
 						<div class="text-center">
 							<div class="text-2xl font-bold text-purple-400">
-								{overviewData?.histories?.reduce((sum, history) => sum + history.failed, 0) || 0}
+								{overviewData?.totalFailed || 0}
 							</div>
 							<div class="text-sm text-gray-500">Failed</div>
 						</div>
 						<div class="text-center">
 							<div class="text-2xl font-bold text-purple-300">
-								{overviewData?.histories?.reduce((sum, history) => sum + history.pending, 0) || 0}
+								{overviewData?.totalPending || 0}
 							</div>
 							<div class="text-sm text-gray-500">Pending</div>
 						</div>
@@ -192,10 +192,7 @@
 
 					<div class="rounded-lg bg-purple-50 p-4 text-center">
 						<div class="text-3xl font-bold text-purple-600">
-							{overviewData?.histories?.reduce(
-								(sum, history) => sum + history.completed + history.failed + history.pending,
-								0
-							) || 0}
+							{(overviewData?.totalCompleted || 0) + (overviewData?.totalFailed || 0) + (overviewData?.totalPending || 0)}
 						</div>
 						<div class="text-lg font-medium text-gray-600">Total Tasks</div>
 					</div>

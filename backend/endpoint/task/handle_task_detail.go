@@ -7,6 +7,8 @@ import (
 	"github.com/bsthun/gut"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
+	"regexp"
+	"strconv"
 )
 
 func (r *Handler) HandleTaskDetail(c *fiber.Ctx) error {
@@ -24,6 +26,21 @@ func (r *Handler) HandleTaskDetail(c *fiber.Ctx) error {
 	task, err := r.database.P().TaskGetById(c.Context(), body.TaskId)
 	if err != nil {
 		return gut.Err(false, "task not found or not owned by user", err)
+	}
+
+	// * replace encode ids
+	if task.FailedReason != nil {
+		re := regexp.MustCompile(`(\s)#(\d+)(\s)`)
+		*task.FailedReason = re.ReplaceAllStringFunc(*task.FailedReason, func(match string) string {
+			submatch := re.FindStringSubmatch(match)
+			if len(submatch) == 4 {
+				num, err := strconv.ParseUint(submatch[2], 10, 64)
+				if err == nil {
+					return submatch[1] + "#" + gut.EncodeId(num) + submatch[3]
+				}
+			}
+			return match
+		})
 	}
 
 	// * response

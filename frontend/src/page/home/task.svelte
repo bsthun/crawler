@@ -8,7 +8,8 @@
 		CardTitle,
 	} from '$/lib/shadcn/components/ui/card'
 	import { Button } from '$/lib/shadcn/components/ui/button'
-	import { Loader2Icon, Plus } from 'lucide-svelte'
+	import { Input } from '$/lib/shadcn/components/ui/input'
+	import { Loader2Icon, Plus, Search } from 'lucide-svelte'
 	import { backend, catcher } from '$/util/backend.ts'
 	import TaskSubmitDialog from './component/TaskSubmitDialog.svelte'
 	import TaskDetailDialog from './component/TaskDetailDialog.svelte'
@@ -38,6 +39,35 @@
 	let selectedCategoryId = 0
 	let selectedUserId: number | null = null
 	let dialogOpen = false
+	let taskIdInput = ''
+	let taskDetailDialogOpen = false
+	let selectedTaskId: number | null = null
+	let nestedTaskDialogOpen = false
+	let nestedTaskId: number | null = null
+
+	const handleTaskIdSubmit = () => {
+		if (taskIdInput.startsWith("#")) {
+			taskIdInput = taskIdInput.slice(1).trim()
+		}
+		let taskId = parseInt(taskIdInput)
+		if (isNaN(taskId)) {
+			taskId = taskIdInput as any
+		}
+		if (taskIdInput.trim()) {
+			selectedTaskId = taskId
+			taskDetailDialogOpen = true
+			taskIdInput = ''
+		}
+	}
+
+	const handleOpenNestedTask = (event: CustomEvent<{ taskId: string }>) => {
+		let taskId = parseInt(event.detail.taskId)
+		if (isNaN(taskId)) {
+			taskId = event.detail.taskId as any
+		}
+		nestedTaskId = taskId
+		nestedTaskDialogOpen = true
+	}
 
 	const formatDate = (dateString: string) => {
 		return new Date(dateString).toLocaleDateString()
@@ -123,14 +153,39 @@
 <Container>
 	<div class="mb-6 flex items-center justify-between">
 		<h1 class="text-3xl font-bold">Tasks</h1>
-		{#if categories}
-			<TaskSubmitDialog bind:open={dialogOpen} {categories} on:submitted={mount}>
-				<Button class="gap-2">
-					<Plus class="h-4 w-4" />
-					Add Task
+		<div class="flex items-center gap-4">
+			<!-- Task ID Input -->
+			<div class="flex items-center gap-2">
+				<Input
+					bind:value={taskIdInput}
+					placeholder="Enter Task ID"
+					type="text"
+					class="w-32"
+					onkeydown={(e) => {
+						if (e.key === 'Enter') {
+							handleTaskIdSubmit()
+						}
+					}}
+				/>
+				<Button
+					variant="outline"
+					size="sm"
+					class="gap-2"
+					onclick={handleTaskIdSubmit}
+				>
+					<Search class="h-4 w-4" />
+					View Task
 				</Button>
-			</TaskSubmitDialog>
-		{/if}
+			</div>
+			{#if categories}
+				<TaskSubmitDialog bind:open={dialogOpen} {categories} on:submitted={mount}>
+					<Button class="gap-2">
+						<Plus class="h-4 w-4" />
+						Add Task
+					</Button>
+				</TaskSubmitDialog>
+			{/if}
+		</div>
 	</div>
 
 	<!-- Filters -->
@@ -163,7 +218,7 @@
 		{#if $setup?.profile?.isAdmin}
 			<div class="flex flex-col gap-2">
 				<label class="text-sm font-medium">User</label>
-				<select bind:value={selectedUserId} class="min-w-[200px] rounded-md border px-3 py-2">
+				<select bind:value={selectedUserId} class="min-w-[120px] rounded-md border px-3 py-2">
 					{#if users?.users}
 						{#each users.users as user}
 							<option value={user.id}>
@@ -240,7 +295,7 @@
 							{task.status}
 						</span>
 						<div class="flex gap-2">
-							<TaskDetailDialog taskId={task.id}>
+							<TaskDetailDialog taskId={task.id} on:openTask={handleOpenNestedTask}>
 								<Button variant="outline" size="sm">View Details</Button>
 							</TaskDetailDialog>
 						</div>
@@ -248,5 +303,23 @@
 				</Card>
 			{/each}
 		</div>
+	{/if}
+
+	<!-- Task Detail Dialog for direct task ID input -->
+	{#if selectedTaskId}
+		<TaskDetailDialog 
+			bind:open={taskDetailDialogOpen} 
+			taskId={selectedTaskId} 
+			on:openTask={handleOpenNestedTask}
+		/>
+	{/if}
+
+	<!-- Nested Task Detail Dialog -->
+	{#if nestedTaskId}
+		<TaskDetailDialog 
+			bind:open={nestedTaskDialogOpen} 
+			taskId={nestedTaskId} 
+			on:openTask={handleOpenNestedTask}
+		/>
 	{/if}
 </Container>

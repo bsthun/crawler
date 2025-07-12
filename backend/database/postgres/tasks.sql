@@ -109,3 +109,18 @@ SELECT *
 FROM tasks
 WHERE status = 'completed'
 ORDER BY created_at;
+
+-- name: TaskTotalCompletedByUserId :one
+SELECT COUNT(*) as total_completed
+FROM tasks
+WHERE user_id = $1 AND status = 'completed';
+
+-- name: TaskTotalFailedByUserId :one
+SELECT COUNT(*) as total_failed
+FROM tasks
+WHERE user_id = $1 AND status = 'failed';
+
+-- name: TaskTotalPendingByUserId :one
+SELECT COUNT(*) as total_pending
+FROM tasks
+WHERE user_id = $1 AND status IN ('queuing', 'processing');

@@ -9,12 +9,17 @@
 	import { Loader2Icon } from 'lucide-svelte'
 	import { backend, catcher } from '$/util/backend.ts'
 	import type { PayloadTaskDetailResponse } from '$/util/backend/backend.ts'
+	import { createEventDispatcher } from 'svelte'
 
 	export let open = false
 	export let taskId: number
 
 	let taskDetail: PayloadTaskDetailResponse | null = null
 	let loading = false
+
+	const dispatch = createEventDispatcher<{
+		openTask: { taskId: string }
+	}>()
 
 	const formatDate = (dateString: string) => {
 		return new Date(dateString).toLocaleDateString()
@@ -41,6 +46,47 @@
 		} finally {
 			loading = false
 		}
+	}
+
+	const parseTaskIdReferences = (text: string) => {
+		// Regex to match whitespace + # + 11 alphanumeric characters + whitespace
+		const regex = /(\s)(#[a-zA-Z0-9]{11})(\s)/g
+		const parts = []
+		let lastIndex = 0
+		let match
+
+		while ((match = regex.exec(text)) !== null) {
+			// Add text before the match
+			if (match.index > lastIndex) {
+				parts.push({ type: 'text', content: text.slice(lastIndex, match.index) })
+			}
+
+			// Add the whitespace before #
+			parts.push({ type: 'text', content: match[1] })
+
+			// Add the task ID as clickable
+			parts.push({ 
+				type: 'taskId', 
+				content: match[2],
+				id: match[2].slice(1) // Remove the # to get just the ID
+			})
+
+			// Add the whitespace after
+			parts.push({ type: 'text', content: match[3] })
+
+			lastIndex = regex.lastIndex
+		}
+
+		// Add remaining text
+		if (lastIndex < text.length) {
+			parts.push({ type: 'text', content: text.slice(lastIndex) })
+		}
+
+		return parts
+	}
+
+	const openNestedTaskDialog = (taskIdStr: string) => {
+		dispatch('openTask', { taskId: taskIdStr })
 	}
 
 	$: if (open && taskId) {
@@ -133,8 +179,23 @@
 					{#if taskDetail.failedReason}
 						<tr class="border-b">
 							<td class="py-2 pr-4 font-medium text-red-600">Failed:</td>
-							<td class="py-2 max-w-sm truncate text-red-600" title={taskDetail.failedReason}>
-								{taskDetail.failedReason}
+							<td class="py-2 max-w-sm text-red-600" title={taskDetail.failedReason}>
+								<div class="break-words">
+									{#each parseTaskIdReferences(taskDetail.failedReason) as part}
+										{#if part.type === 'taskId'}
+											<button
+												type="button"
+												class="hover:text-red-800 hover:underline cursor-pointer font-medium bg-transparent border-none p-0 m-0 font-inherit text-inherit inline"
+												title="Click to view task {part.id}"
+												onclick={() => openNestedTaskDialog(part.id || '')}
+											>
+												{part.content}
+											</button>
+										{:else}
+											{part.content}
+										{/if}
+									{/each}
+								</div>
 							</td>
 						</tr>
 					{/if}

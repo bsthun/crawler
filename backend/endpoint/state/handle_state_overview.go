@@ -11,8 +11,8 @@ import (
 )
 
 func (r *Handler) HandleStateOverview(c *fiber.Ctx) error {
-	// * login claims
-	l := c.Locals("l").(*jwt.Token).Claims.(*common.LoginClaims)
+	// * user claims
+	u := c.Locals("l").(*jwt.Token).Claims.(*common.LoginClaims)
 
 	// * parse body
 	body := new(payload.OverviewRequest)
@@ -23,13 +23,31 @@ func (r *Handler) HandleStateOverview(c *fiber.Ctx) error {
 	// * validate userId
 	// TODO: Check for admin user override
 	if body.UserId != nil {
-		l.UserId = body.UserId
+		u.UserId = body.UserId
 	}
-	
+
 	// * get overview statistics
-	statsRows, err := r.database.P().TaskOverviewByUserId(c.Context(), l.UserId)
+	statsRows, err := r.database.P().TaskOverviewByUserId(c.Context(), u.UserId)
 	if err != nil {
 		return gut.Err(false, "failed to get overview statistics", err)
+	}
+
+	// * get total completed count
+	totalCompleted, err := r.database.P().TaskTotalCompletedByUserId(c.Context(), u.UserId)
+	if err != nil {
+		return gut.Err(false, "failed to get total completed count", err)
+	}
+
+	// * get total failed count
+	totalFailed, err := r.database.P().TaskTotalFailedByUserId(c.Context(), u.UserId)
+	if err != nil {
+		return gut.Err(false, "failed to get total failed count", err)
+	}
+
+	// * get total pending count
+	totalPending, err := r.database.P().TaskTotalPendingByUserId(c.Context(), u.UserId)
+	if err != nil {
+		return gut.Err(false, "failed to get total pending count", err)
 	}
 
 	// * get pool token
@@ -59,8 +77,11 @@ func (r *Handler) HandleStateOverview(c *fiber.Ctx) error {
 
 	// * response
 	return c.JSON(response.Success(c, &payload.Overview{
-		TokenCount: statsRows[0].TokenCount,
-		Histories:  histories,
-		PoolTokens: poolTokens,
+		TokenCount:     statsRows[0].TokenCount,
+		TotalCompleted: totalCompleted,
+		TotalFailed:    totalFailed,
+		TotalPending:   totalPending,
+		Histories:      histories,
+		PoolTokens:     poolTokens,
 	}))
 }

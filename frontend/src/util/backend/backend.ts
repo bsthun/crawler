@@ -30,6 +30,9 @@ export interface PayloadOverview {
   histories: PayloadOverviewHistoryItem[];
   poolTokens: PayloadPoolTokenCategoryItem[];
   tokenCount: number;
+  totalCompleted: number;
+  totalFailed: number;
+  totalPending: number;
 }
 
 export interface PayloadOverviewHistoryItem {
