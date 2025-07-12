@@ -29,9 +29,9 @@ func (r *Handler) HandleTaskDetail(c *fiber.Ctx) error {
 	}
 
 	// * replace encode ids
-	if task.FailedReason != nil {
+	if task.Task.FailedReason != nil {
 		re := regexp.MustCompile(`(\s)#(\d+)(\s)`)
-		*task.FailedReason = re.ReplaceAllStringFunc(*task.FailedReason, func(match string) string {
+		*task.Task.FailedReason = re.ReplaceAllStringFunc(*task.Task.FailedReason, func(match string) string {
 			submatch := re.FindStringSubmatch(match)
 			if len(submatch) == 4 {
 				num, err := strconv.ParseUint(submatch[2], 10, 64)
@@ -45,19 +45,36 @@ func (r *Handler) HandleTaskDetail(c *fiber.Ctx) error {
 
 	// * response
 	return c.JSON(response.Success(c, &payload.TaskDetailResponse{
-		Id:           task.Id,
-		UserId:       task.UserId,
-		UploadId:     task.UploadId,
-		CategoryId:   task.CategoryId,
-		Type:         task.Type,
-		Source:       task.Source,
-		IsRaw:        task.IsRaw,
-		Status:       task.Status,
-		FailedReason: task.FailedReason,
-		Title:        task.Title,
-		Content:      task.Content,
-		TokenCount:   task.TokenCount,
-		CreatedAt:    task.CreatedAt,
-		UpdatedAt:    task.UpdatedAt,
+		Id:           task.Task.Id,
+		UserId:       task.Task.UserId,
+		UploadId:     task.Task.UploadId,
+		CategoryId:   task.Task.CategoryId,
+		Type:         task.Task.Type,
+		Source:       task.Task.Source,
+		IsRaw:        task.Task.IsRaw,
+		Status:       task.Task.Status,
+		FailedReason: task.Task.FailedReason,
+		Title:        task.Task.Title,
+		Content:      task.Task.Content,
+		TokenCount:   task.Task.TokenCount,
+		CreatedAt:    task.Task.CreatedAt,
+		UpdatedAt:    task.Task.UpdatedAt,
+		User: &payload.UserListItem{
+			Id:        task.User.Id,
+			Oid:       task.User.Oid,
+			Firstname: task.User.Firstname,
+			Lastname:  task.User.Lastname,
+			Email:     task.User.Email,
+			PhotoUrl:  task.User.PhotoUrl,
+			IsAdmin:   task.User.IsAdmin,
+			CreatedAt: task.User.CreatedAt,
+			UpdatedAt: task.User.UpdatedAt,
+		},
+		Category: &payload.TaskCategoryItem{
+			Id:        task.Category.Id,
+			Name:      task.Category.Name,
+			CreatedAt: task.Category.CreatedAt,
+			UpdatedAt: task.Category.UpdatedAt,
+		},
 	}))
 }

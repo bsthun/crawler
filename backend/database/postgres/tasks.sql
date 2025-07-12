@@ -18,9 +18,11 @@ WHERE user_id = $1
   AND (sqlc.narg('upload_id')::BIGINT IS NULL OR upload_id = sqlc.narg('upload_id')::BIGINT);
 
 -- name: TaskGetById :one
-SELECT *
+SELECT sqlc.embed(tasks), sqlc.embed(users), sqlc.embed(categories)
 FROM tasks
-WHERE id = $1;
+LEFT JOIN users ON tasks.user_id = users.id
+LEFT JOIN categories ON tasks.category_id = categories.id
+WHERE tasks.id = $1;
 
 -- name: TaskOverviewByUserId :many
 WITH token_stats AS (

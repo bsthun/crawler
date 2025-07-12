@@ -76,20 +76,22 @@ type TaskDetailRequest struct {
 }
 
 type TaskDetailResponse struct {
-	Id           *uint64    `json:"id"`
-	UserId       *uint64    `json:"userId"`
-	UploadId     *uint64    `json:"uploadId"`
-	CategoryId   *uint64    `json:"categoryId"`
-	Type         *string    `json:"type"`
-	Source       *string    `json:"source"`
-	IsRaw        *bool      `json:"isRaw"`
-	Status       *string    `json:"status"`
-	FailedReason *string    `json:"failedReason"`
-	Title        *string    `json:"title"`
-	Content      *string    `json:"content"`
-	TokenCount   *int32     `json:"tokenCount"`
-	CreatedAt    *time.Time `json:"createdAt"`
-	UpdatedAt    *time.Time `json:"updatedAt"`
+	Id           *uint64           `json:"id"`
+	UserId       *uint64           `json:"userId"`
+	UploadId     *uint64           `json:"uploadId"`
+	CategoryId   *uint64           `json:"categoryId"`
+	Type         *string           `json:"type"`
+	Source       *string           `json:"source"`
+	IsRaw        *bool             `json:"isRaw"`
+	Status       *string           `json:"status"`
+	FailedReason *string           `json:"failedReason"`
+	Title        *string           `json:"title"`
+	Content      *string           `json:"content"`
+	TokenCount   *int32            `json:"tokenCount"`
+	CreatedAt    *time.Time        `json:"createdAt"`
+	UpdatedAt    *time.Time        `json:"updatedAt"`
+	User         *UserListItem     `json:"user"`
+	Category     *TaskCategoryItem `json:"category"`
 }
 
 type TaskCategoryItem struct {
