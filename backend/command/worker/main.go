@@ -429,8 +429,69 @@ func (r *Worker) process() {
 				gut.Fatal("failed to parse duplicate taskId", err)
 			}
 
-			duplicateCount++
-			duplicateTaskIds = append(duplicateTaskIds, fmt.Sprintf("#%d %.4f%%", duplicateTaskId, searchResp.Result[0].Score*100))
+			// * get duplicate task
+			duplicateTask, err := r.database.P().TaskGetById(context.Background(), gut.Ptr(duplicateTaskId))
+			if err != nil {
+				gut.Fatal("failed to get duplicate task", err)
+			} else if *duplicateTask.Task.Status == "ignored" {
+				_, err = r.qdrantClient.SetPayload(context.Background(), &qd.SetPayloadPoints{
+					CollectionName: *r.config.QdrantCollection,
+					Payload: map[string]*qd.Value{
+						"taskId": {
+							Kind: &qd.Value_StringValue{
+								StringValue: strconv.FormatUint(*task.Id, 10),
+							},
+						},
+					},
+					PointsSelector: &qd.PointsSelector{
+						PointsSelectorOneOf: &qd.PointsSelector_Filter{
+							Filter: &qd.Filter{
+								Must: []*qd.Condition{
+									{
+										ConditionOneOf: &qd.Condition_Field{
+											Field: &qd.FieldCondition{
+												Key: "taskId",
+												Match: &qd.Match{
+													MatchValue: &qd.Match_Keyword{
+														Keyword: strconv.FormatUint(duplicateTaskId, 10),
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				})
+				if err != nil {
+					if err := r.database.P().TaskUpdateFailed(context.Background(), &psql.TaskUpdateFailedParams{
+						Id:           task.Id,
+						FailedReason: gut.Ptr(fmt.Sprintf("qdrant ignored deduplicate upsert error: %v", err)),
+						Title:        title,
+						Content:      content,
+						TokenCount:   &tokenResp.TokenCount,
+					}); err != nil {
+						gut.Fatal("failed to update task as failed", err)
+					}
+				}
+
+				// * update task as completed
+				if err := r.database.P().TaskUpdateCompleted(context.Background(), &psql.TaskUpdateCompletedParams{
+					Id:            task.Id,
+					Title:         title,
+					Content:       content,
+					TokenCount:    &tokenResp.TokenCount,
+					RevisedTaskId: duplicateTask.Task.Id,
+				}); err != nil {
+					gut.Fatal("failed to update task as completed", err)
+				}
+				return
+			} else {
+				// * duplicate task is not ignored
+				duplicateCount++
+				duplicateTaskIds = append(duplicateTaskIds, fmt.Sprintf("#%d %.4f%%", duplicateTaskId, searchResp.Result[0].Score*100))
+			}
 		}
 
 		// * generate uuid for point
@@ -532,10 +593,11 @@ func (r *Worker) process() {
 
 	// * update task as completed
 	if err := r.database.P().TaskUpdateCompleted(context.Background(), &psql.TaskUpdateCompletedParams{
-		Id:         task.Id,
-		Title:      title,
-		Content:    content,
-		TokenCount: &tokenResp.TokenCount,
+		Id:            task.Id,
+		Title:         title,
+		Content:       content,
+		TokenCount:    &tokenResp.TokenCount,
+		RevisedTaskId: nil,
 	}); err != nil {
 		gut.Fatal("failed to update task as completed", err)
 	}

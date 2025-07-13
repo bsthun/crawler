@@ -84,7 +84,11 @@ RETURNING *;
 
 -- name: TaskUpdateCompleted :exec
 UPDATE tasks
-SET status = 'completed', title = $2, content = $3, token_count = $4
+SET status          = 'completed',
+    title           = COALESCE($2, title),
+    content         = COALESCE($3, content),
+    token_count     = COALESCE($4, token_count),
+    revised_task_id = COALESCE($5, revised_task_id)
 WHERE id = $1;
 
 -- name: TaskUpdateFailed :exec
@@ -126,3 +130,10 @@ WHERE user_id = $1 AND status = 'failed';
 SELECT COUNT(*) as total_pending
 FROM tasks
 WHERE user_id = $1 AND status IN ('queuing', 'processing');
+
+-- name: TaskListFailedRawDuplicates :many
+SELECT *
+FROM tasks
+WHERE is_raw = true
+  AND status = 'failed'
+  AND failed_reason ~ 'duplicate #[0-9]+(:|\s)';
