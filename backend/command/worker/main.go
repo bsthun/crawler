@@ -11,6 +11,11 @@ import (
 	"embed"
 	"flag"
 	"fmt"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/bsthun/gut"
 	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
@@ -18,10 +23,6 @@ import (
 	qd "github.com/qdrant/go-client/qdrant"
 	"github.com/tmc/langchaingo/textsplitter"
 	"go.uber.org/fx"
-	"net/url"
-	"strconv"
-	"strings"
-	"time"
 )
 
 var embedMigrations embed.FS
@@ -371,7 +372,7 @@ func (r *Worker) process() {
 			CollectionName: *r.config.QdrantCollection,
 			Vector:         embeddingResp.Embeddings[0],
 			Limit:          uint64(1),
-			ScoreThreshold: gut.Ptr(float32(0.90)),
+			ScoreThreshold: gut.Ptr(float32(0.975)),
 			WithPayload: &qd.WithPayloadSelector{
 				SelectorOptions: &qd.WithPayloadSelector_Enable{
 					Enable: true,
