@@ -29,6 +29,9 @@ type Config struct {
 	EndpointWebPath      *string           `yaml:"endpointWebPath" validate:"required"`
 	EndpointDocPath      *string           `yaml:"endpointDocPath" validate:"required"`
 	EndpointYoutubePath  *string           `yaml:"endpointYoutubePath" validate:"required"`
+	OpenaiBaseUrl        *string           `yaml:"openaiBaseUrl" validate:"required"`
+	OpenaiModel          *string           `yaml:"openaiModel" validate:"required"`
+	OpenaiApiKey         *string           `yaml:"openaiApiKey" validate:"required"`
 }
 
 func Init() *Config {

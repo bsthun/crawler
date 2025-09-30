@@ -4,11 +4,12 @@ import (
 	"backend/type/common"
 	"backend/type/payload"
 	"backend/type/response"
+	"regexp"
+	"strconv"
+
 	"github.com/bsthun/gut"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
-	"regexp"
-	"strconv"
 )
 
 func (r *Handler) HandleTaskDetail(c *fiber.Ctx) error {

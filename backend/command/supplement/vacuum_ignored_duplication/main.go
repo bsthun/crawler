@@ -7,10 +7,11 @@ import (
 	"backend/type/common"
 	"context"
 	"embed"
-	"github.com/bsthun/gut"
-	"go.uber.org/fx"
 	"regexp"
 	"strconv"
+
+	"github.com/bsthun/gut"
+	"go.uber.org/fx"
 )
 
 var embedMigrations embed.FS
