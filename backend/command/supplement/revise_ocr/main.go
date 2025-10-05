@@ -97,11 +97,13 @@ func invoke(
 func (r *OcrReviser) reviseOcr() {
 	ctx := context.Background()
 
-	// * query tasks with google drive links
+	// * query tasks
 	rows, err := r.database.QueryContext(ctx, `
 		SELECT id, user_id, category_id, type, source, status, content, token_count, created_at, remark
 		FROM _task_revises2
-		WHERE source LIKE 'https://drive.google.com/%'
+		WHERE source != ''
+		AND content = ''
+		AND (category_id = 1 OR category_id = 3)
 		ORDER BY id
 	`)
 	if err != nil {
@@ -136,27 +138,40 @@ func (r *OcrReviser) reviseOcr() {
 		gut.Fatal("error iterating rows", err)
 	}
 
-	gut.Debug("found %d tasks with google drive links", len(tasks))
+	gut.Debug("found %d tasks with source URLs", len(tasks))
 
 	// * process each task
 	processedCount := 0
 	for _, task := range tasks {
-		if task.Source == nil {
+		if task.Source == nil || *task.Source == "" {
 			continue
 		}
 
-		// * extract file id from google drive url
-		fileId := r.extractFileId(*task.Source)
-		if fileId == "" {
-			gut.Debug("task %d: could not extract file id from %s", *task.Id, *task.Source)
-			continue
-		}
+		var pdfData []byte
+		var err error
 
-		// * download pdf from google drive
-		pdfData, err := r.downloadFromGoogleDrive(fileId)
-		if err != nil {
-			gut.Debug("task %d: failed to download pdf: %v", *task.Id, err)
-			continue
+		// * check if url is google drive
+		if r.isGoogleDriveUrl(*task.Source) {
+			// * extract file id from google drive url
+			fileId := r.extractFileId(*task.Source)
+			if fileId == "" {
+				gut.Debug("task %d: could not extract file id from %s", *task.Id, *task.Source)
+				continue
+			}
+
+			// * download pdf from google drive
+			pdfData, err = r.downloadFromGoogleDrive(fileId)
+			if err != nil {
+				gut.Debug("task %d: failed to download pdf from google drive: %v", *task.Id, err)
+				continue
+			}
+		} else {
+			// * download pdf from direct url
+			pdfData, err = r.downloadDirectUrl(*task.Source)
+			if err != nil {
+				gut.Debug("task %d: failed to download pdf from direct url: %v", *task.Id, err)
+				continue
+			}
 		}
 
 		// * extract text from pdf
@@ -182,6 +197,38 @@ func (r *OcrReviser) reviseOcr() {
 	}
 
 	gut.Debug("processed %d tasks", processedCount)
+}
+
+func (r *OcrReviser) isGoogleDriveUrl(url string) bool {
+	// * check if url contains google drive domain
+	return strings.Contains(url, "drive.google.com") || strings.Contains(url, "docs.google.com")
+}
+
+func (r *OcrReviser) downloadDirectUrl(url string) ([]byte, error) {
+	// * create http client with timeout
+	client := &http.Client{
+		Timeout: 60 * time.Second,
+	}
+
+	// * make request
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, gut.Err(false, "failed to download file", err)
+	}
+	defer resp.Body.Close()
+
+	// * check response status
+	if resp.StatusCode != http.StatusOK {
+		return nil, gut.Err(false, fmt.Sprintf("failed to download file: status %d", resp.StatusCode))
+	}
+
+	// * read response body
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, gut.Err(false, "failed to read response body", err)
+	}
+
+	return data, nil
 }
 
 func (r *OcrReviser) extractFileId(url string) string {
@@ -276,7 +323,7 @@ func (r *OcrReviser) extractTextFromPdf(pdfData []byte) (string, error) {
 
 	// * create channel for results and semaphore for concurrency control
 	resultChan := make(chan pageResult, totalPages)
-	semaphore := make(chan struct{}, 10) // * max 10 concurrent goroutines
+	semaphore := make(chan struct{}, 48)
 
 	// * waitgroup to track all goroutines
 	var wg sync.WaitGroup
@@ -387,11 +434,12 @@ func (r *OcrReviser) extractTextWithOpenAI(base64Image string, pageNo int) (stri
 	var messages []openai.ChatCompletionMessageParamUnion
 
 	// * add system message
-	systemContent := "Extract all text from this image exactly as it appears. Maintain the original formatting, structure, and language. Do not translate, summarize, or modify the content. Return only the extracted text without any additional commentary."
+	systemContent := "Output text content from this image, detects only English and Thai character, keeping original content and do not translate or modify the content. Remove and clean unnecessary spaces, line breaks, emojis, symbols, and characters. Remove line without meaningful context. Replace or merge any repeating dot or dashes into only '...'. This must revise arrangement or combine chunking of context to be meaningful content, ignore image or any non-text content, simplified markdown without any extra line break or separators. Can use extra formatting only '*' for bullet, markdown table, latex block for equations, otherwise will fallback to plain text. If no text, respond with '-'."
 	messages = append(messages, openai.SystemMessage(systemContent))
 
 	// * add user content parts
 	var userContentParts []openai.ChatCompletionContentPartUnionParam
+	userContentParts = append(userContentParts, openai.TextContentPart(systemContent))
 	userContentParts = append(userContentParts, openai.ImageContentPart(openai.ChatCompletionContentPartImageImageURLParam{
 		URL: fmt.Sprintf("data:image/jpeg;base64,%s", base64Image),
 	}))
@@ -408,9 +456,13 @@ func (r *OcrReviser) extractTextWithOpenAI(base64Image string, pageNo int) (stri
 
 	// * prepare chat completion request params
 	chatParams := openai.ChatCompletionNewParams{
-		Messages:  messages,
-		Model:     *r.config.OpenaiModel,
-		MaxTokens: openai.Int(2048),
+		Messages:         messages,
+		Model:            *r.config.OpenaiModel,
+		MaxTokens:        openai.Int(2048),
+		Temperature:      openai.Float(0.1),
+		TopP:             openai.Float(1),
+		FrequencyPenalty: openai.Float(0.5),
+		PresencePenalty:  openai.Float(0.2),
 	}
 
 	// * call openai api with retry
@@ -421,7 +473,7 @@ func (r *OcrReviser) extractTextWithOpenAI(base64Image string, pageNo int) (stri
 
 	for i := 0; i < maxRetries; i++ {
 		chatCompletion, err = r.openai.Chat.Completions.New(ctx, chatParams)
-		if err == nil {
+		if err == nil && len(chatCompletion.Choices) > 0 {
 			break
 		}
 		if i < maxRetries-1 {
