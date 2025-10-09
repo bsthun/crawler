@@ -101,8 +101,8 @@ func (r *OcrReviser) reviseOcr() {
 	rows, err := r.database.QueryContext(ctx, `
 		SELECT id, user_id, category_id, type, source, status, content, token_count, created_at, remark
 		FROM _task_revises2
-		WHERE source != ''
-		AND content = ''
+		WHERE type = 'doc'
+		AND (content IS NULL OR content = '')
 		AND (category_id = 1 OR category_id = 3)
 		ORDER BY id
 	`)
@@ -143,9 +143,7 @@ func (r *OcrReviser) reviseOcr() {
 	// * process each task
 	processedCount := 0
 	for _, task := range tasks {
-		if task.Source == nil || *task.Source == "" {
-			continue
-		}
+		gut.Debug("processing task %d with source %s", *task.Id, *task.Source)
 
 		var pdfData []byte
 		var err error
