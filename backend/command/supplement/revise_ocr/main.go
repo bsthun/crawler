@@ -305,6 +305,11 @@ func (r *OcrReviser) extractTextFromPdf(pdfData []byte) (string, error) {
 	defer os.Remove(tempFile)
 
 	// * open pdf with fitz for rendering pages as images
+	defer func() {
+		if r := recover(); r != nil {
+			gut.Debug("recovered from panic in fitz.New: %v", r)
+		}
+	}()
 	doc, err := fitz.New(tempFile)
 	if err != nil {
 		return "", gut.Err(false, "failed to open pdf with fitz", err)
