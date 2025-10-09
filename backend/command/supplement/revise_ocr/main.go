@@ -23,6 +23,7 @@ import (
 	"github.com/gen2brain/go-fitz"
 	_ "github.com/lib/pq"
 	"github.com/openai/openai-go"
+	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu"
 	"go.uber.org/fx"
 )
 
@@ -172,6 +173,13 @@ func (r *OcrReviser) reviseOcr() {
 			}
 		}
 
+		// * validate pdf first by attempting to decode it
+		err = r.validatePdf(pdfData)
+		if err != nil {
+			gut.Debug("task %d: failed to decode pdf: %v", *task.Id, err)
+			continue
+		}
+
 		// * extract text from pdf
 		extractedText, err := r.extractTextFromPdf(pdfData)
 		if err != nil {
@@ -288,6 +296,19 @@ func (r *OcrReviser) downloadFromGoogleDrive(fileId string) ([]byte, error) {
 	return data, nil
 }
 
+func (r *OcrReviser) validatePdf(pdfData []byte) error {
+	// * create byte reader from pdf data
+	reader := bytes.NewReader(pdfData)
+
+	// * try to read and validate pdf structure using pdfcpu
+	_, err := pdfcpu.Read(reader, nil)
+	if err != nil {
+		return gut.Err(false, "pdf validation failed", err)
+	}
+
+	return nil
+}
+
 func (r *OcrReviser) extractTextFromPdf(pdfData []byte) (string, error) {
 	// * create temp directory if not exists
 	tempDir := ".local/temp"
@@ -305,11 +326,7 @@ func (r *OcrReviser) extractTextFromPdf(pdfData []byte) (string, error) {
 	defer os.Remove(tempFile)
 
 	// * open pdf with fitz for rendering pages as images
-	defer func() {
-		if r := recover(); r != nil {
-			gut.Debug("recovered from panic in fitz.New: %v", r)
-		}
-	}()
+
 	doc, err := fitz.New(tempFile)
 	if err != nil {
 		return "", gut.Err(false, "failed to open pdf with fitz", err)
